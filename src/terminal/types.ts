@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 
-export type ThemeName = "dusk" | "amber" | "matrix" | "mono" | "paper";
+export type ThemeName =
+  | "github-dark"
+  | "github-light"
+  | "vercel-dark"
+  | "vercel-light"
+  | "claude-dark"
+  | "claude-light";
 
 export interface ThemeColors {
   bg: string;

@@ -275,8 +275,16 @@ export function Terminal() {
   );
 
   const cycleTheme = useCallback(() => {
-    const idx = themeOrder.indexOf(theme);
-    applyTheme(themeOrder[(idx + 1) % themeOrder.length]);
+    const [currentBrand, currentMode] = theme.split("-") as [string, string];
+    const brands = ["github", "vercel", "claude"];
+    const nextBrand = brands[(brands.indexOf(currentBrand) + 1) % brands.length];
+    applyTheme(`${nextBrand}-${currentMode}` as ThemeName);
+  }, [applyTheme, theme]);
+
+  const toggleMode = useCallback(() => {
+    const [currentBrand, currentMode] = theme.split("-") as [string, string];
+    const nextMode = currentMode === "dark" ? "light" : "dark";
+    applyTheme(`${currentBrand}-${nextMode}` as ThemeName);
   }, [applyTheme, theme]);
 
   const focusInput = useCallback((e: ReactMouseEvent) => {
@@ -363,6 +371,7 @@ export function Terminal() {
           metaLabel={META_LABEL}
           onOpenPalette={() => setPaletteOpen(true)}
           onCycleTheme={cycleTheme}
+          onToggleMode={toggleMode}
         />
 
         {paletteOpen && (

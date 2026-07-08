@@ -3,9 +3,18 @@ interface StatusBarProps {
   metaLabel: string;
   onOpenPalette: () => void;
   onCycleTheme: () => void;
+  onToggleMode: () => void;
 }
 
-export function StatusBar({ theme, metaLabel, onOpenPalette, onCycleTheme }: StatusBarProps) {
+export function StatusBar({
+  theme,
+  metaLabel,
+  onOpenPalette,
+  onCycleTheme,
+  onToggleMode,
+}: StatusBarProps) {
+  const [themeName, themeMode] = theme.split("-") as [string, string];
+
   return (
     <div className="statusbar">
       <span
@@ -18,7 +27,20 @@ export function StatusBar({ theme, metaLabel, onOpenPalette, onCycleTheme }: Sta
           onCycleTheme();
         }}
       >
-        theme&nbsp;<span className="badge">{theme}</span>
+        theme&nbsp;<span className="badge">{themeName}</span>
+      </span>
+      <span className="dim">·</span>
+      <span
+        className="seg"
+        role="button"
+        tabIndex={-1}
+        style={{ cursor: "pointer", userSelect: "none" }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onToggleMode();
+        }}
+      >
+        mode&nbsp;<span className="badge">{themeMode}</span>
       </span>
       <span className="spacer" />
       <span className="dim sm-hide">
