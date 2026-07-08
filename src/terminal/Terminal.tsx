@@ -362,6 +362,7 @@ export function Terminal() {
           theme={theme}
           metaLabel={META_LABEL}
           onOpenPalette={() => setPaletteOpen(true)}
+          onCycleTheme={cycleTheme}
         />
 
         {paletteOpen && (
