@@ -311,7 +311,7 @@ export function Terminal() {
             />
           </div>
           <div className="title">
-            {portfolio.handle} — ~/portfolio
+            {portfolio.name.toLowerCase()}
           </div>
           <div className="title-hint">
             press <kbd>{META_LABEL}K</kbd>
