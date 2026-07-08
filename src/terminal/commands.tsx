@@ -1,6 +1,7 @@
 import type { Command, CommandCategory, ThemeName } from "./types";
 import { portfolio } from "../content/portfolio";
 import { themeOrder, themes } from "./themes";
+import { SnakeGame } from "./components/SnakeGame";
 
 /* ───────────────────────── presentational helpers ───────────────────────── */
 
@@ -131,7 +132,7 @@ const categoryLabels: Record<CommandCategory, string> = {
 };
 
 function Help() {
-  const order: CommandCategory[] = ["about", "work", "system"];
+  const order: CommandCategory[] = ["about", "work", "system", "fun"];
   const visible = commands.filter((c) => !c.hidden);
   return (
     <div className="out">
@@ -268,6 +269,12 @@ export const commands: Command[] = [
     run: (ctx) => {
       ctx.clearHistory();
     },
+  },
+  {
+    name: "snake",
+    summary: "play a game of retro snake",
+    category: "fun",
+    run: () => <SnakeGame />,
   },
   // ── hidden easter egg ──
   {
