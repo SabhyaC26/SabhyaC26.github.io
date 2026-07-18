@@ -1,7 +1,6 @@
 import type { Command, CommandCategory, ThemeName } from "./types";
 import { portfolio } from "../content/portfolio";
 import { themeOrder, themes } from "./themes";
-import { SnakeGame } from "./components/SnakeGame";
 
 /* ───────────────────────── presentational helpers ───────────────────────── */
 
@@ -269,12 +268,6 @@ export const commands: Command[] = [
     run: (ctx) => {
       ctx.clearHistory();
     },
-  },
-  {
-    name: "snake",
-    summary: "play a game of retro snake",
-    category: "fun",
-    run: () => <SnakeGame />,
   },
   // ── hidden easter egg ──
   {
