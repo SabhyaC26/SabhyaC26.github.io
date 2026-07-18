@@ -1,0 +1,13 @@
+---
+description: Use personal GitHub identity SabhyaC26 for commits in this repo
+alwaysApply: true
+---
+
+# Commit author for this repo
+
+When committing to this repository, always use the personal GitHub identity **SabhyaC26**.
+
+- Do **not** commit as `sabhya-db` (Databricks work identity).
+- Author name should be `SabhyaC26` (or the personal name/email tied to that GitHub account).
+- Before committing, verify `git config user.name` / `git config user.email` in this repo are the personal identity — not the work `sabhya-db` / `@databricks.com` identity.
+- If the local identity is wrong, ask the user to set the correct personal author for this repo before creating the commit.
