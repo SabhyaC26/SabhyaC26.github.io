@@ -175,18 +175,6 @@ export const commands: Command[] = [
     run: () => <Skills />,
   },
   {
-    name: "resume",
-    summary: "open my resume (pdf)",
-    category: "work",
-    run: () => {
-      if (portfolio.resumeUrl) {
-        window.open(portfolio.resumeUrl, "_blank", "noopener");
-        return <span className="muted">opening resume…</span>;
-      }
-      return <span className="muted">no resume linked yet.</span>;
-    },
-  },
-  {
     name: "contact",
     aliases: ["email", "socials", "links"],
     summary: "how to reach me",

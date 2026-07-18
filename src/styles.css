@@ -473,6 +473,13 @@ body {
   color: var(--fg-faint);
   margin: 2px 0;
 }
+.banner-intro {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.45;
+  max-width: 42ch;
+}
 
 .help-grid {
   display: grid;

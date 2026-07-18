@@ -44,7 +44,6 @@ export interface Portfolio {
   skills: SkillGroup[];
   socials: SocialLink[];
   email: string;
-  resumeUrl?: string;
 }
 
 export const portfolio: Portfolio = {
@@ -52,7 +51,8 @@ export const portfolio: Portfolio = {
   handle: "sabhya",
   role: "AI Software Engineer @ Databricks",
   location: "San Francisco, CA",
-  tagline: "I build AI agents and the tools around them.",
+  tagline:
+    "AI software engineer at Databricks building coding agents. Outside of work I cycle, hike, run, swim, eat, and tinker.",
 
   about: [
     "I'm Sabhya — an AI software engineer at Databricks, where I work on coding agents and agentic systems. I was a core contributor to Omnigent, an open-source meta-harness that runs Claude Code, Codex, and Cursor behind one interface, and I helped take our Supervisor Agent and Knowledge Assistant products from 0 to XXXX+ weekly active customers.",
@@ -142,5 +142,4 @@ export const portfolio: Portfolio = {
   ],
 
   email: "sabhyachhabria@gmail.com",
-  resumeUrl: "/resume.pdf",
 };

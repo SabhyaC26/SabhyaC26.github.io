@@ -24,6 +24,8 @@ export function Banner() {
           ))}
         </span>
         <span className="rule">───────────────────────</span>
+        <p className="banner-intro">{portfolio.tagline}</p>
+        <span className="rule">───────────────────────</span>
         <span className="k">help</span>
         <span className="v">
           type <span className="accent">/help</span> to begin
