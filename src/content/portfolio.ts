@@ -49,10 +49,10 @@ export interface Portfolio {
 export const portfolio: Portfolio = {
   name: "Sabhya Chhabria",
   handle: "sabhya",
-  role: "AI Software Engineer @ Databricks",
+  role: "Agentmaxxing @ Databricks",
   location: "San Francisco, CA",
   tagline:
-    "AI software engineer at Databricks building coding agents. Outside of work I cycle, hike, run, swim, eat, and tinker.",
+    "Agentmaxxing at Databricks. I cycle, hike, run, swim, eat, and tinker.",
 
   about: [
     "I'm Sabhya — an AI software engineer at Databricks, where I work on coding agents and agentic systems. I was a core contributor to Omnigent, an open-source meta-harness that runs Claude Code, Codex, and Cursor behind one interface, and I helped take our Supervisor Agent and Knowledge Assistant products from 0 to XXXX+ weekly active customers.",
@@ -103,13 +103,12 @@ export const portfolio: Portfolio = {
       school: "Princeton University",
       degree: "M.S. Computer Science",
       period: "2022 — 2024",
-      detail: "GPA 3.85 · NLP group",
+      detail: "NLP group",
     },
     {
       school: "Cornell University",
       degree: "B.A. Computer Science (Honors)",
       period: "2018 — 2021",
-      detail: "GPA 3.82",
     },
   ],
 
