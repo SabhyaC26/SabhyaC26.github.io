@@ -4,8 +4,11 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 const COLS = 28;
 const ROWS = 16;
 const BIN_COUNT = 5;
-const LENS_RADIUS = 72;
-const SELECT_RADIUS = 48;
+/** How far (px) the magnification bubble reaches — wide like the show. */
+const LENS_RADIUS = 190;
+const SELECT_RADIUS = 64;
+/** Peak scale at the cursor center. */
+const LENS_MAX_SCALE = 4.2;
 
 const FILE_NAMES = [
   "Cold Harbour",
@@ -86,8 +89,6 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
   const [toast, setToast] = useState("Find the woeful numbers. Refine them.");
   const [fileName] = useState(() => pick(FILE_NAMES));
   const [statusHex, setStatusHex] = useState(hexNoise);
-  const [selecting, setSelecting] = useState(false);
-  const [pointer, setPointer] = useState<Point | null>(null);
   const [dragOverBin, setDragOverBin] = useState<number | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -99,7 +100,6 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
   const rafRef = useRef<number | null>(null);
 
   selectedRef.current = selected;
-  selectingRef.current = selecting;
 
   const overall = useMemo(() => {
     const sum = bins.reduce((a, b) => a + b, 0);
@@ -174,26 +174,40 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
     rootRef.current?.focus();
   }, []);
 
-  // Lens effect via direct DOM (avoids re-rendering the whole grid on mousemove)
+  // Lens effect via direct DOM (avoids re-rendering the whole grid on mousemove).
+  // Uses layout math (not getBoundingClientRect on scaled cells) so zoom stays stable.
   const applyLens = useCallback(() => {
     rafRef.current = null;
     const p = pointerRef.current;
+    const grid = gridRef.current;
     const map = cellEls.current;
+    if (!grid) return;
+
+    const gridRect = grid.getBoundingClientRect();
+    const cellW = gridRect.width / COLS;
+    const cellH = gridRect.height / ROWS;
+
     for (const [id, el] of map) {
       if (!p) {
         el.style.setProperty("--mdr-scale", "1");
-        el.style.setProperty("--mdr-bright", "0.55");
+        el.style.setProperty("--mdr-bright", "0.5");
+        el.style.setProperty("--mdr-z", "0");
         continue;
       }
-      const rect = el.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
+
+      const col = id % COLS;
+      const row = Math.floor(id / COLS);
+      const cx = gridRect.left + (col + 0.5) * cellW;
+      const cy = gridRect.top + (row + 0.5) * cellH;
       const dist = Math.hypot(cx - p.x, cy - p.y);
       const t = Math.max(0, 1 - dist / LENS_RADIUS);
-      const scale = 1 + t * t * 1.85;
-      const bright = 0.45 + t * 0.55;
+      // Smooth radial bulge — lots of digits swell, strongest at the center
+      const bulge = t * t * (3 - 2 * t);
+      const scale = 1 + bulge * (LENS_MAX_SCALE - 1);
+      const bright = 0.38 + bulge * 0.62;
       el.style.setProperty("--mdr-scale", String(scale));
       el.style.setProperty("--mdr-bright", String(bright));
+      el.style.setProperty("--mdr-z", String(Math.round(bulge * 50)));
 
       if (selectingRef.current && dist < SELECT_RADIUS) {
         if (!selectedRef.current.has(id)) {
@@ -225,9 +239,7 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
   }, [cells, selected, scheduleLens]);
 
   function onGridPointerMove(e: ReactPointerEvent) {
-    const pt = { x: e.clientX, y: e.clientY };
-    pointerRef.current = pt;
-    setPointer(pt);
+    pointerRef.current = { x: e.clientX, y: e.clientY };
     scheduleLens();
   }
 
@@ -235,11 +247,10 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
     if (e.button !== 0) return;
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    setSelecting(true);
     selectingRef.current = true;
-    const pt = { x: e.clientX, y: e.clientY };
-    pointerRef.current = pt;
-    setPointer(pt);
+    setSelected(new Set());
+    selectedRef.current = new Set();
+    pointerRef.current = { x: e.clientX, y: e.clientY };
     scheduleLens();
   }
 
@@ -249,8 +260,18 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
     } catch {
       /* already released */
     }
-    setSelecting(false);
     selectingRef.current = false;
+
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const binBtn = under?.closest<HTMLElement>("[data-mdr-bin]");
+    if (binBtn && selectedRef.current.size > 0) {
+      const idx = Number(binBtn.dataset.mdrBin);
+      if (!Number.isNaN(idx)) {
+        refineInto(idx);
+        return;
+      }
+    }
+
     if (selectedRef.current.size > 0) {
       setToast(`Selected ${selectedRef.current.size}. Drop on a bin (or press 1–5).`);
     }
@@ -259,7 +280,6 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
   function onGridPointerLeave() {
     if (!selectingRef.current) {
       pointerRef.current = null;
-      setPointer(null);
       scheduleLens();
     }
   }
@@ -346,7 +366,6 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
             </button>
           );
         })}
-        {pointer && selecting && <div className="mdr-lens-ring" style={{ left: pointer.x, top: pointer.y }} />}
       </div>
 
       <div className="mdr-bins">
@@ -354,6 +373,7 @@ export function MacrodataRefinement({ onClose }: MacrodataRefinementProps) {
           <button
             key={i}
             type="button"
+            data-mdr-bin={i}
             className={`mdr-bin${dragOverBin === i ? " is-hot" : ""}`}
             onClick={() => refineInto(i)}
             onPointerEnter={() => {
