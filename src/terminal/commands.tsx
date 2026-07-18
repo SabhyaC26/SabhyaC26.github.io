@@ -250,7 +250,7 @@ export const commands: Command[] = [
   {
     name: "clear",
     aliases: ["cls"],
-    summary: "clear the screen",
+    summary: "clear the screen and show the banner",
     category: "system",
     run: (ctx) => {
       ctx.clearHistory();

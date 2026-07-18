@@ -134,9 +134,11 @@ export const portfolio: Portfolio = {
   ],
 
   socials: [
-    // TODO: verify these handles/URLs are correct
     { label: "github", handle: "@SabhyaC26", url: "https://github.com/SabhyaC26" },
     { label: "linkedin", handle: "sabhyachhabria", url: "https://linkedin.com/in/sabhyachhabria" },
+    { label: "x", handle: "@sabhyac267", url: "https://x.com/sabhyac267" },
+    { label: "substack", handle: "@sabhyachhabria", url: "https://substack.com/@sabhyachhabria" },
+    { label: "strava", handle: "sabhyachhabria", url: "https://www.strava.com/athletes/105348209" },
   ],
 
   email: "sabhyachhabria@gmail.com",

@@ -47,7 +47,7 @@ export interface CommandContext {
   setThemeId: (id: ThemeId) => void;
   /** Open the visual theme picker overlay. */
   openThemePicker: () => void;
-  /** Wipe the scrollback. */
+  /** Clear scrollback and restore the opening screen. */
   clearHistory: () => void;
   /** Programmatically run another command line. */
   runCommand: (input: string) => void;

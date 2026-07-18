@@ -32,6 +32,16 @@ const isMac =
   /mac|iphone|ipad/i.test(navigator.userAgent);
 const META_LABEL = isMac ? "⌘" : "Ctrl+";
 
+function WelcomeHint() {
+  return (
+    <p className="muted out">
+      Welcome. Type <span className="accent">/</span> to see commands, press{" "}
+      <span className="accent">{META_LABEL}K</span>, or try{" "}
+      <span className="accent">/about</span>.
+    </p>
+  );
+}
+
 function loadTheme(): ThemeName {
   const saved =
     typeof localStorage !== "undefined" ? localStorage.getItem(THEME_KEY) : null;
@@ -125,7 +135,22 @@ export function Terminal() {
     [],
   );
 
-  const clearHistory = useCallback(() => setHistory([]), []);
+  const clearHistory = useCallback(() => {
+    setHistory([
+      {
+        id: String(idRef.current++),
+        prompt: null,
+        node: <Banner />,
+        animate: true,
+      },
+      {
+        id: String(idRef.current++),
+        prompt: null,
+        node: <WelcomeHint />,
+        animate: true,
+      },
+    ]);
+  }, []);
 
   const applyTheme = useCallback((name: ThemeName) => {
     setTheme(name);
@@ -192,7 +217,7 @@ export function Terminal() {
       };
 
       const result = cmd.run(ctx);
-      if (cmd.name === "clear") return; // clearHistory already wiped the screen
+      if (cmd.name === "clear") return; // clearHistory already restored the opening screen
       addEntry(raw, result ?? null);
     },
     [addEntry, applyTheme, applyThemeId, clearHistory, theme],
@@ -203,16 +228,7 @@ export function Terminal() {
     if (bootedRef.current) return;
     bootedRef.current = true;
 
-    addEntry(null, <Banner />, true);
-    addEntry(
-      null,
-      <p className="muted out">
-        Welcome. Type <span className="accent">/</span> to see commands, press{" "}
-        <span className="accent">{META_LABEL}K</span>, or try{" "}
-        <span className="accent">/about</span>.
-      </p>,
-      true,
-    );
+    clearHistory();
 
     const deepLink = new URLSearchParams(window.location.search).get("cmd");
     if (deepLink) execute(deepLink);
