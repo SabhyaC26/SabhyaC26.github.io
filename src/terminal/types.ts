@@ -51,6 +51,8 @@ export interface CommandContext {
   clearHistory: () => void;
   /** Programmatically run another command line. */
   runCommand: (input: string) => void;
+  /** Take over the screen with Macrodata Refinement. */
+  openMacrodata: () => void;
 }
 
 /** A command returns a node to print, or nothing for side-effect-only commands. */

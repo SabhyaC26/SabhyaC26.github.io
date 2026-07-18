@@ -25,6 +25,7 @@ import { Autocomplete } from "./components/Autocomplete";
 import type { Suggestion } from "./components/Autocomplete";
 import { CommandPalette } from "./components/CommandPalette";
 import { ThemePicker } from "./components/ThemePicker";
+import { MacrodataRefinement } from "./components/MacrodataRefinement";
 
 const THEME_KEY = "tp:theme";
 const isMac =
@@ -114,6 +115,7 @@ export function Terminal() {
   const [focused, setFocused] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const [macrodataOpen, setMacrodataOpen] = useState(false);
   const [acIndex, setAcIndex] = useState(0);
   const [acDismissed, setAcDismissed] = useState(false);
 
@@ -174,6 +176,7 @@ export function Terminal() {
   }, [applyTheme, theme]);
 
   const openThemePicker = useCallback(() => setThemePickerOpen(true), []);
+  const openMacrodata = useCallback(() => setMacrodataOpen(true), []);
 
   const execute = useCallback(
     (line: string) => {
@@ -214,13 +217,14 @@ export function Terminal() {
         openThemePicker: () => setThemePickerOpen(true),
         clearHistory,
         runCommand: (next) => execute(next),
+        openMacrodata,
       };
 
       const result = cmd.run(ctx);
       if (cmd.name === "clear") return; // clearHistory already restored the opening screen
       addEntry(raw, result ?? null);
     },
-    [addEntry, applyTheme, applyThemeId, clearHistory, theme],
+    [addEntry, applyTheme, applyThemeId, clearHistory, openMacrodata, theme],
   );
 
   // Boot sequence (guarded against StrictMode double-invoke).
@@ -241,8 +245,9 @@ export function Terminal() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [history]);
 
-  // Global shortcut: toggle the command palette.
+  // Global shortcut: toggle the command palette (disabled during MDR).
   useEffect(() => {
+    if (macrodataOpen) return;
     function onKey(e: globalThis.KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -251,12 +256,12 @@ export function Terminal() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [macrodataOpen]);
 
-  // Refocus the input when the palette closes.
+  // Refocus the input when the palette / MDR closes.
   useEffect(() => {
-    if (!paletteOpen) inputRef.current?.focus();
-  }, [paletteOpen]);
+    if (!paletteOpen && !macrodataOpen) inputRef.current?.focus();
+  }, [paletteOpen, macrodataOpen]);
 
   // Apply theme colors as CSS variables on the window (before paint, so no flash).
   useLayoutEffect(() => {
@@ -370,113 +375,119 @@ export function Terminal() {
   const current = themes[theme];
 
   return (
-    <Desktop>
-      <Window
-        contentRef={windowRef}
-        title={portfolio.name.toLowerCase()}
-        titleTrailing={
-          <>
-            <ModeToggle mode={current.mode} onToggle={toggleMode} />
-            <span className="title-hint-text">
-              press <kbd>{META_LABEL}K</kbd>
-            </span>
-          </>
-        }
-        traffic={
-          <>
-            <button
-              className="dot red"
-              title="clear"
-              aria-label="clear"
-              onClick={clearHistory}
-            />
-            <button
-              className="dot yellow"
-              title="themes"
-              aria-label="open theme picker"
-              onClick={openThemePicker}
-            />
-            <button
-              className="dot green"
-              title="print banner"
-              aria-label="print banner"
-              onClick={() => addEntry(null, <Banner />, true)}
-            />
-          </>
-        }
-      >
-        <div className="body" ref={bodyRef} onClick={focusInput}>
-          {history.map((entry) => (
-            <div
-              key={entry.id}
-              className={`entry${entry.animate ? " reveal" : ""}`}
-            >
-              {entry.prompt !== null && (
-                <div className="entry-input">
-                  <span className="sym">❯</span>
-                  <span>{entry.prompt}</span>
-                </div>
-              )}
-              {entry.node != null && (
-                <div className="entry-output">{entry.node}</div>
-              )}
-            </div>
-          ))}
-        </div>
+    <>
+      <Desktop>
+        <Window
+          contentRef={windowRef}
+          title={portfolio.name.toLowerCase()}
+          titleTrailing={
+            <>
+              <ModeToggle mode={current.mode} onToggle={toggleMode} />
+              <span className="title-hint-text">
+                press <kbd>{META_LABEL}K</kbd>
+              </span>
+            </>
+          }
+          traffic={
+            <>
+              <button
+                className="dot red"
+                title="clear"
+                aria-label="clear"
+                onClick={clearHistory}
+              />
+              <button
+                className="dot yellow"
+                title="themes"
+                aria-label="open theme picker"
+                onClick={openThemePicker}
+              />
+              <button
+                className="dot green"
+                title="print banner"
+                aria-label="print banner"
+                onClick={() => addEntry(null, <Banner />, true)}
+              />
+            </>
+          }
+        >
+          <div className="body" ref={bodyRef} onClick={focusInput}>
+            {history.map((entry) => (
+              <div
+                key={entry.id}
+                className={`entry${entry.animate ? " reveal" : ""}`}
+              >
+                {entry.prompt !== null && (
+                  <div className="entry-input">
+                    <span className="sym">❯</span>
+                    <span>{entry.prompt}</span>
+                  </div>
+                )}
+                {entry.node != null && (
+                  <div className="entry-output">{entry.node}</div>
+                )}
+              </div>
+            ))}
+          </div>
 
-        <div className="ac-wrap" onClick={focusInput}>
-          {showAutocomplete && (
-            <Autocomplete
-              items={suggestions}
-              activeIndex={acIndex}
-              onSelect={complete}
-              onHover={setAcIndex}
+          <div className="ac-wrap" onClick={focusInput}>
+            {showAutocomplete && (
+              <Autocomplete
+                items={suggestions}
+                activeIndex={acIndex}
+                onSelect={complete}
+                onHover={setAcIndex}
+              />
+            )}
+            <Prompt
+              value={input}
+              placeholder="type / for commands…"
+              focused={focused}
+              inputRef={inputRef}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+            />
+          </div>
+
+          <StatusBar
+            themeLabel={current.label}
+            metaLabel={META_LABEL}
+            onOpenPalette={() => setPaletteOpen(true)}
+            onOpenThemePicker={openThemePicker}
+          />
+
+          {paletteOpen && (
+            <CommandPalette
+              onClose={() => setPaletteOpen(false)}
+              onRun={(name) => {
+                if (name === "theme") {
+                  setPaletteOpen(false);
+                  setThemePickerOpen(true);
+                  return;
+                }
+                execute(name);
+              }}
             />
           )}
-          <Prompt
-            value={input}
-            placeholder="type / for commands…"
-            focused={focused}
-            inputRef={inputRef}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-          />
-        </div>
 
-        <StatusBar
-          themeLabel={current.label}
-          metaLabel={META_LABEL}
-          onOpenPalette={() => setPaletteOpen(true)}
-          onOpenThemePicker={openThemePicker}
-        />
+          {themePickerOpen && (
+            <ThemePicker
+              currentId={current.id}
+              onSelect={applyThemeId}
+              onClose={() => {
+                setThemePickerOpen(false);
+                inputRef.current?.focus();
+              }}
+            />
+          )}
+        </Window>
+      </Desktop>
 
-        {paletteOpen && (
-          <CommandPalette
-            onClose={() => setPaletteOpen(false)}
-            onRun={(name) => {
-              if (name === "theme") {
-                setPaletteOpen(false);
-                setThemePickerOpen(true);
-                return;
-              }
-              execute(name);
-            }}
-          />
-        )}
-
-        {themePickerOpen && (
-          <ThemePicker
-            currentId={current.id}
-            onSelect={applyThemeId}
-            onClose={() => {
-              setThemePickerOpen(false);
-              inputRef.current?.focus();
-            }}
-          />
-        )}
-      </Window>
-    </Desktop>
+      {macrodataOpen && (
+        <MacrodataRefinement onClose={() => setMacrodataOpen(false)} />
+      )}
+    </>
   );
 }

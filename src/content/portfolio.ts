@@ -21,11 +21,6 @@ export interface EducationItem {
   detail?: string;
 }
 
-export interface SkillGroup {
-  label: string;
-  items: string[];
-}
-
 export interface SocialLink {
   label: string;
   handle: string;
@@ -41,7 +36,6 @@ export interface Portfolio {
   about: string[];
   experience: ExperienceItem[];
   education: EducationItem[];
-  skills: SkillGroup[];
   socials: SocialLink[];
   email: string;
 }
@@ -109,26 +103,6 @@ export const portfolio: Portfolio = {
       school: "Cornell University",
       degree: "B.A. Computer Science (Honors)",
       period: "2018 — 2021",
-    },
-  ],
-
-  skills: [
-    { label: "languages", items: ["Python", "Go", "TypeScript", "Java", "C/C++", "SQL", "Bash"] },
-    {
-      label: "agentic systems",
-      items: [
-        "MCP",
-        "Claude Code",
-        "Codex",
-        "OpenAI & Anthropic Agents SDKs",
-        "multi-agent orchestration",
-        "evals & benchmarking",
-      ],
-    },
-    { label: "ml / ai", items: ["PyTorch", "Hugging Face", "MLflow", "LangChain", "CUDA"] },
-    {
-      label: "infrastructure",
-      items: ["Docker", "Kubernetes", "AWS", "GCP", "Spark", "Databricks", "FastAPI", "Modal", "CI/CD"],
     },
   ],
 

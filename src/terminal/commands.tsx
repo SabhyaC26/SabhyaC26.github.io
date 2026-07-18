@@ -71,19 +71,6 @@ function Experience() {
   );
 }
 
-function Skills() {
-  return (
-    <div className="out kv">
-      {portfolio.skills.map((group) => (
-        <span key={group.label} style={{ display: "contents" }}>
-          <span className="k">{group.label}</span>
-          <span className="v muted">{group.items.join(", ")}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function Contact() {
   return (
     <div className="out">
@@ -168,13 +155,6 @@ export const commands: Command[] = [
     run: () => <Experience />,
   },
   {
-    name: "skills",
-    aliases: ["stack"],
-    summary: "tools I reach for",
-    category: "work",
-    run: () => <Skills />,
-  },
-  {
     name: "contact",
     aliases: ["email", "socials", "links"],
     summary: "how to reach me",
@@ -242,6 +222,16 @@ export const commands: Command[] = [
     category: "system",
     run: (ctx) => {
       ctx.clearHistory();
+    },
+  },
+  {
+    name: "atyourownrisk",
+    aliases: ["mdr", "severance", "lumon"],
+    summary: "do not",
+    category: "fun",
+    run: (ctx) => {
+      ctx.openMacrodata();
+      return <span className="muted">…</span>;
     },
   },
   // ── hidden easter egg ──
