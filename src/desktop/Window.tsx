@@ -136,16 +136,33 @@ export function Window({
         preMaxRef.current = null;
         return false;
       }
-      preMaxRef.current = bounds;
+      setBounds((current) => {
+        preMaxRef.current = current;
+        return {
+          x: 0,
+          y: 0,
+          w: window.innerWidth,
+          h: window.innerHeight,
+        };
+      });
+      return true;
+    });
+  }, [mobile]);
+
+  // Keep maximized windows flush with the viewport.
+  useEffect(() => {
+    if (!maximized || mobile) return;
+    function onResize() {
       setBounds({
         x: 0,
         y: 0,
         w: window.innerWidth,
         h: window.innerHeight,
       });
-      return true;
-    });
-  }, [bounds, mobile]);
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [maximized, mobile]);
 
   const endPointer = useCallback(() => {
     dragRef.current = null;

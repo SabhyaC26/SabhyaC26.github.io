@@ -299,10 +299,17 @@ export function Terminal() {
   }, []);
 
   return (
-    <div className="screen" ref={screenRef}>
-      <div className="window">
-        <div className="titlebar">
-          <div className="traffic">
+    <Desktop>
+      <Window
+        contentRef={windowRef}
+        title={portfolio.name.toLowerCase()}
+        titleTrailing={
+          <>
+            press <kbd>{META_LABEL}K</kbd>
+          </>
+        }
+        traffic={
+          <>
             <button
               className="dot red"
               title="clear"
@@ -321,15 +328,9 @@ export function Terminal() {
               aria-label="print banner"
               onClick={() => addEntry(null, <Banner />, true)}
             />
-          </div>
-          <div className="title">
-            {portfolio.name.toLowerCase()}
-          </div>
-          <div className="title-hint">
-            press <kbd>{META_LABEL}K</kbd>
-          </div>
-        </div>
-
+          </>
+        }
+      >
         <div className="body" ref={bodyRef} onClick={focusInput}>
           {history.map((entry) => (
             <div
@@ -402,7 +403,7 @@ export function Terminal() {
             }}
           />
         )}
-      </div>
-    </div>
+      </Window>
+    </Desktop>
   );
 }
