@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import type { ThemeName } from "../types";
-import { themeOrder, themes } from "../themes";
+import type { ThemeId } from "../types";
+import { themeMeta, themeOrder } from "../themes";
 
 interface ThemePickerProps {
-  current: ThemeName;
-  onSelect: (name: ThemeName) => void;
+  currentId: ThemeId;
+  onSelect: (id: ThemeId) => void;
   onClose: () => void;
 }
 
-export function ThemePicker({ current, onSelect, onClose }: ThemePickerProps) {
-  const initial = Math.max(0, themeOrder.indexOf(current));
+export function ThemePicker({ currentId, onSelect, onClose }: ThemePickerProps) {
+  const initial = Math.max(0, themeOrder.indexOf(currentId));
   const [active, setActive] = useState(initial);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -25,8 +25,8 @@ export function ThemePicker({ current, onSelect, onClose }: ThemePickerProps) {
     el?.scrollIntoView({ block: "nearest" });
   }, [active]);
 
-  function choose(name: ThemeName) {
-    onSelect(name);
+  function choose(id: ThemeId) {
+    onSelect(id);
     onClose();
   }
 
@@ -68,17 +68,13 @@ export function ThemePicker({ current, onSelect, onClose }: ThemePickerProps) {
         aria-label="Color themes"
         onKeyDown={handleKeyDown}
       >
-        <div className="theme-picker-header">
-          <span className="theme-picker-title">Themes</span>
-          <span className="theme-picker-hint">↑↓ · Enter · Esc</span>
-        </div>
-        <div className="palette-list">
-          {themeOrder.map((name, i) => {
-            const t = themes[name];
-            const selected = name === current;
+        <div className="palette-list theme-picker-list">
+          {themeOrder.map((id, i) => {
+            const t = themeMeta(id);
+            const selected = id === currentId;
             return (
               <div
-                key={name}
+                key={id}
                 data-theme-index={i}
                 role="option"
                 aria-selected={selected}
@@ -86,14 +82,15 @@ export function ThemePicker({ current, onSelect, onClose }: ThemePickerProps) {
                 onMouseEnter={() => setActive(i)}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  choose(name);
+                  choose(id);
                 }}
               >
-                <span className="theme-swatch" aria-hidden>
-                  <span style={{ background: t.colors.bg }} />
-                  <span style={{ background: t.colors.fg }} />
-                  <span style={{ background: t.colors.accent }} />
-                  <span style={{ background: t.colors.green }} />
+                <span
+                  className="theme-aa"
+                  aria-hidden
+                  style={{ background: t.preview.bg, color: t.preview.fg }}
+                >
+                  Aa
                 </span>
                 <span className="name">{t.label}</span>
                 {selected && <span className="theme-check">✓</span>}

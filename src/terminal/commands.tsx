@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { Command, CommandCategory, ThemeName } from "./types";
+import type { Command, CommandCategory, ThemeId } from "./types";
 import { portfolio } from "../content/portfolio";
-import { themeOrder, themes } from "./themes";
+import { themeMeta, themeOrder, themes } from "./themes";
 
 /* ───────────────────────── presentational helpers ───────────────────────── */
 
@@ -205,33 +205,38 @@ export const commands: Command[] = [
         return (
           <div className="out">
             <p className="muted">
-              current theme: <span className="accent">{ctx.theme}</span>
+              current theme:{" "}
+              <span className="accent">{themes[ctx.theme].label}</span>
             </p>
             <div className="stack">
-              {themeOrder.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={`chip chip-btn${t === ctx.theme ? " chip-active" : ""}`}
-                  style={{
-                    borderColor: t === ctx.theme ? themes[t].colors.accent : undefined,
-                    color: t === ctx.theme ? themes[t].colors.accent : undefined,
-                  }}
-                  onClick={() => ctx.setTheme(t)}
-                >
-                  {t}
-                </button>
-              ))}
+              {themeOrder.map((id) => {
+                const t = themeMeta(id);
+                const active = themes[ctx.theme].id === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`chip chip-btn${active ? " chip-active" : ""}`}
+                    style={{
+                      borderColor: active ? t.colors.accent : undefined,
+                      color: active ? t.colors.accent : undefined,
+                    }}
+                    onClick={() => ctx.setThemeId(id)}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
             <p className="faint">click a theme, or use the picker</p>
           </div>
         );
       }
       if ((themeOrder as string[]).includes(name)) {
-        ctx.setTheme(name as ThemeName);
+        ctx.setThemeId(name as ThemeId);
         return (
           <span className="muted">
-            theme → <span className="accent">{name}</span>
+            theme → <span className="accent">{themeMeta(name as ThemeId).label}</span>
           </span>
         );
       }

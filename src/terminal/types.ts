@@ -1,12 +1,8 @@
 import type { ReactNode } from "react";
 
-export type ThemeName =
-  | "github-dark"
-  | "github-light"
-  | "vercel-dark"
-  | "vercel-light"
-  | "claude-dark"
-  | "claude-light";
+export type ThemeId = "github" | "claude" | "monokai";
+export type ThemeMode = "dark" | "light";
+export type ThemeName = `${ThemeId}-${ThemeMode}`;
 
 export interface ThemeColors {
   bg: string;
@@ -23,10 +19,20 @@ export interface ThemeColors {
   selection: string;
 }
 
+export interface ThemePreview {
+  /** Soft swatch background for the "Aa" icon. */
+  bg: string;
+  /** "Aa" glyph color. */
+  fg: string;
+}
+
 export interface Theme {
   name: ThemeName;
+  id: ThemeId;
+  mode: ThemeMode;
   label: string;
   colors: ThemeColors;
+  preview: ThemePreview;
 }
 
 export type CommandCategory = "about" | "work" | "system" | "fun";
@@ -38,6 +44,7 @@ export interface CommandContext {
   raw: string;
   theme: ThemeName;
   setTheme: (name: ThemeName) => void;
+  setThemeId: (id: ThemeId) => void;
   /** Open the visual theme picker overlay. */
   openThemePicker: () => void;
   /** Wipe the scrollback. */

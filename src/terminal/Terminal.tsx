@@ -7,9 +7,14 @@ import {
   useState,
 } from "react";
 import type { KeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
-import type { CommandContext, HistoryEntry, ThemeName } from "./types";
+import type { CommandContext, HistoryEntry, ThemeId, ThemeMode, ThemeName } from "./types";
 import { completionNames, findCommand, suggestCommand } from "./commands";
-import { defaultTheme, themeOrder, themeVars, themes } from "./themes";
+import {
+  resolveSavedTheme,
+  themeName,
+  themeVars,
+  themes,
+} from "./themes";
 import { portfolio } from "../content/portfolio";
 import { Desktop } from "../desktop/Desktop";
 import { Window } from "../desktop/Window";
@@ -28,11 +33,52 @@ const isMac =
 const META_LABEL = isMac ? "⌘" : "Ctrl+";
 
 function loadTheme(): ThemeName {
-  const saved = typeof localStorage !== "undefined" ? localStorage.getItem(THEME_KEY) : null;
-  if (saved && (themeOrder as string[]).includes(saved)) {
-    return saved as ThemeName;
-  }
-  return defaultTheme;
+  const saved =
+    typeof localStorage !== "undefined" ? localStorage.getItem(THEME_KEY) : null;
+  return resolveSavedTheme(saved);
+}
+
+function ModeToggle({
+  mode,
+  onToggle,
+}: {
+  mode: ThemeMode;
+  onToggle: () => void;
+}) {
+  const isDark = mode === "dark";
+  return (
+    <button
+      type="button"
+      className="mode-toggle"
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+    >
+      {isDark ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5Z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </button>
+  );
 }
 
 function UnknownCommand({ name, suggestion }: { name: string; suggestion?: string }) {
@@ -90,6 +136,20 @@ export function Terminal() {
     }
   }, []);
 
+  const applyThemeId = useCallback(
+    (id: ThemeId) => {
+      applyTheme(themeName(id, themes[theme].mode));
+    },
+    [applyTheme, theme],
+  );
+
+  const toggleMode = useCallback(() => {
+    const nextMode: ThemeMode = themes[theme].mode === "dark" ? "light" : "dark";
+    applyTheme(themeName(themes[theme].id, nextMode));
+  }, [applyTheme, theme]);
+
+  const openThemePicker = useCallback(() => setThemePickerOpen(true), []);
+
   const execute = useCallback(
     (line: string) => {
       const raw = line;
@@ -125,6 +185,7 @@ export function Terminal() {
         raw,
         theme,
         setTheme: applyTheme,
+        setThemeId: applyThemeId,
         openThemePicker: () => setThemePickerOpen(true),
         clearHistory,
         runCommand: (next) => execute(next),
@@ -134,7 +195,7 @@ export function Terminal() {
       if (cmd.name === "clear") return; // clearHistory already wiped the screen
       addEntry(raw, result ?? null);
     },
-    [addEntry, applyTheme, clearHistory, theme],
+    [addEntry, applyTheme, applyThemeId, clearHistory, theme],
   );
 
   // Boot sequence (guarded against StrictMode double-invoke).
@@ -283,20 +344,14 @@ export function Terminal() {
     [acIndex, clearHistory, complete, execute, input, showAutocomplete, suggestions],
   );
 
-  const toggleMode = useCallback(() => {
-    const [currentBrand, currentMode] = theme.split("-") as [string, string];
-    const nextMode = currentMode === "dark" ? "light" : "dark";
-    applyTheme(`${currentBrand}-${nextMode}` as ThemeName);
-  }, [applyTheme, theme]);
-
-  const openThemePicker = useCallback(() => setThemePickerOpen(true), []);
-
   const focusInput = useCallback((e: ReactMouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("a, button")) return;
     if (window.getSelection()?.toString()) return;
     inputRef.current?.focus();
   }, []);
+
+  const current = themes[theme];
 
   return (
     <Desktop>
@@ -305,7 +360,10 @@ export function Terminal() {
         title={portfolio.name.toLowerCase()}
         titleTrailing={
           <>
-            press <kbd>{META_LABEL}K</kbd>
+            <ModeToggle mode={current.mode} onToggle={toggleMode} />
+            <span className="title-hint-text">
+              press <kbd>{META_LABEL}K</kbd>
+            </span>
           </>
         }
         traffic={
@@ -372,11 +430,10 @@ export function Terminal() {
         </div>
 
         <StatusBar
-          theme={theme}
+          themeLabel={current.label}
           metaLabel={META_LABEL}
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenThemePicker={openThemePicker}
-          onToggleMode={toggleMode}
         />
 
         {paletteOpen && (
@@ -395,8 +452,8 @@ export function Terminal() {
 
         {themePickerOpen && (
           <ThemePicker
-            current={theme}
-            onSelect={applyTheme}
+            currentId={current.id}
+            onSelect={applyThemeId}
             onClose={() => {
               setThemePickerOpen(false);
               inputRef.current?.focus();

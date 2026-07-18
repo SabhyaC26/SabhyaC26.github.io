@@ -1,20 +1,16 @@
 interface StatusBarProps {
-  theme: string;
+  themeLabel: string;
   metaLabel: string;
   onOpenPalette: () => void;
   onOpenThemePicker: () => void;
-  onToggleMode: () => void;
 }
 
 export function StatusBar({
-  theme,
+  themeLabel,
   metaLabel,
   onOpenPalette,
   onOpenThemePicker,
-  onToggleMode,
 }: StatusBarProps) {
-  const [themeName, themeMode] = theme.split("-") as [string, string];
-
   return (
     <div className="statusbar">
       <span
@@ -22,7 +18,7 @@ export function StatusBar({
         role="button"
         tabIndex={0}
         title="Choose theme"
-        aria-label={`Theme ${themeName}. Click to choose a theme.`}
+        aria-label={`Theme ${themeLabel}. Click to choose a theme.`}
         style={{ cursor: "pointer", userSelect: "none" }}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -35,28 +31,7 @@ export function StatusBar({
           }
         }}
       >
-        theme&nbsp;<span className="badge">{themeName}</span>
-      </span>
-      <span className="dim">·</span>
-      <span
-        className="seg"
-        role="button"
-        tabIndex={0}
-        title="Toggle light / dark"
-        aria-label={`Mode ${themeMode}. Click to toggle light or dark.`}
-        style={{ cursor: "pointer", userSelect: "none" }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onToggleMode();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onToggleMode();
-          }
-        }}
-      >
-        mode&nbsp;<span className="badge">{themeMode}</span>
+        theme&nbsp;<span className="badge">{themeLabel}</span>
       </span>
       <span className="spacer" />
       <span className="dim sm-hide">

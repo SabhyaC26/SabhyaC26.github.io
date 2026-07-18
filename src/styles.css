@@ -248,6 +248,9 @@ body {
 }
 
 .title-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 12px;
   color: var(--fg-faint);
   white-space: nowrap;
@@ -260,6 +263,33 @@ body {
   border-radius: 5px;
   padding: 1px 5px;
   font-size: 11px;
+}
+
+.mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+.mode-toggle:hover {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.mode-toggle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ──────────────────────────────── body ──────────────────────────────── */
@@ -911,47 +941,44 @@ button.chip-btn:hover {
 /* ───────────────────────────── theme picker ───────────────────────────── */
 
 .theme-picker {
-  width: min(420px, 92%);
+  width: min(280px, 92%);
 }
-.theme-picker-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.theme-picker-title {
-  font-size: 15px;
-  color: var(--fg);
-  font-weight: 600;
-}
-.theme-picker-hint {
-  font-size: 11px;
-  color: var(--fg-faint);
-  letter-spacing: 0.02em;
+.theme-picker-list {
+  padding: 6px;
 }
 .theme-picker-item {
   align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
 }
-.theme-swatch {
+.theme-aa {
   display: inline-flex;
-  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   flex: none;
-}
-.theme-swatch span {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 6%, transparent);
 }
 .theme-check {
   margin-left: auto;
-  color: var(--accent);
-  font-size: 13px;
+  color: var(--fg-muted);
+  font-size: 14px;
+  font-weight: 600;
 }
 .theme-picker-item.selected .name {
-  color: var(--accent);
+  color: var(--fg);
+  font-weight: 600;
 }
 .theme-picker:focus {
   outline: none;
@@ -963,7 +990,7 @@ button.chip-btn:hover {
   .desktop-wallpaper {
     transform: none;
   }
-  .title-hint {
+  .title-hint-text {
     display: none;
   }
   .body {
