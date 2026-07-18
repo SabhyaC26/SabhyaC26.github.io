@@ -5,15 +5,6 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-export interface Project {
-  name: string;
-  tagline: string;
-  description: string;
-  stack: string[];
-  year?: string;
-  link?: string;
-}
-
 export interface ExperienceItem {
   role: string;
   org: string;
@@ -48,7 +39,6 @@ export interface Portfolio {
   location: string;
   tagline: string;
   about: string[];
-  projects: Project[];
   experience: ExperienceItem[];
   education: EducationItem[];
   skills: SkillGroup[];
@@ -65,38 +55,8 @@ export const portfolio: Portfolio = {
   tagline: "I build AI agents and the tools around them.",
 
   about: [
-    "I'm Sabhya — an AI software engineer at Databricks, where I work on coding agents and agentic systems. I was a core contributor to Omnigent, an open-source meta-harness that runs Claude Code, Codex, and Cursor behind one interface, and I helped take our Supervisor Agent and Knowledge Assistant products from 0 to 1,500+ weekly active customers.",
+    "I'm Sabhya — an AI software engineer at Databricks, where I work on coding agents and agentic systems. I was a core contributor to Omnigent, an open-source meta-harness that runs Claude Code, Codex, and Cursor behind one interface, and I helped take our Supervisor Agent and Knowledge Assistant products from 0 to XXXX+ weekly active customers.",
     "Before Databricks I did my M.S. in CS at Princeton (with the NLP group) and my B.A. in CS at Cornell, with ML research stints at Scale AI and Snap along the way.",
-    "I like working close to both the metal and the user. This site is a terminal because the command line is one of the best interfaces ever designed — type /help to look around.",
-  ],
-
-  projects: [
-    {
-      name: "omnigent",
-      tagline: "Open-source meta-harness for coding agents.",
-      description:
-        "Runs Claude Code, Codex, and Cursor behind a single command and unified interface. I built core Client/Server/Runner runtime and native harness support across agents, plus multiplayer collaboration and cloud sandboxes.",
-      stack: ["python", "go", "typescript"],
-      year: "2025",
-      // link: "https://github.com/...", // TODO: add the Omnigent repo URL
-    },
-    {
-      name: "supervisor-agent",
-      tagline: "Databricks' 0-to-1 agent products.",
-      description:
-        "Supervisor Agent & Knowledge Assistant, built on the OpenAI and Anthropic Agents SDKs with async submit-and-poll execution and per-call MCP tool-approval gating. Demoed at the Data & AI Summit keynote; 100+ customers integrate custom MCP tools.",
-      stack: ["fastapi", "python", "mcp"],
-      year: "2024",
-    },
-    {
-      name: "terminal-portfolio",
-      tagline: "This website.",
-      description:
-        "A slash-command terminal UI for a personal site — command router, theming, autocomplete, and a ⌘K command palette. No real shell required.",
-      stack: ["react", "typescript", "vite"],
-      year: "2026",
-      // link: "https://github.com/...", // TODO: add the repo URL
-    },
   ],
 
   experience: [
@@ -109,8 +69,7 @@ export const portfolio: Portfolio = {
       highlights: [
         "Core contributor to Omnigent — an open-source (Apache 2.0) meta-harness running Claude Code, Codex, and Cursor behind one interface.",
         "Built multi-agent orchestration, real-time multiplayer collaboration (Polly), and cloud sandbox execution for remote coding agents.",
-        "Led 0-to-1 Supervisor Agent & Knowledge Assistant; demoed at the Data & AI Summit keynote and scaled to 1,500+ weekly active customers.",
-        "Hill-climbed OfficeQA quality from 21% to 50% and cut time-to-first-token from ~10s to <1s (~50% lower end-to-end latency).",
+        "Led 0-to-1 Supervisor Agent & Knowledge Assistant; demoed at the Data & AI Summit keynote and scaled to XXXX+ weekly active customers.",
       ],
     },
     {
@@ -176,7 +135,7 @@ export const portfolio: Portfolio = {
 
   socials: [
     // TODO: verify these handles/URLs are correct
-    { label: "github", handle: "@sabhyachhabria", url: "https://github.com/sabhyachhabria" },
+    { label: "github", handle: "@SabhyaC26", url: "https://github.com/SabhyaC26" },
     { label: "linkedin", handle: "sabhyachhabria", url: "https://linkedin.com/in/sabhyachhabria" },
   ],
 

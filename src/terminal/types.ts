@@ -38,6 +38,8 @@ export interface CommandContext {
   raw: string;
   theme: ThemeName;
   setTheme: (name: ThemeName) => void;
+  /** Open the visual theme picker overlay. */
+  openThemePicker: () => void;
   /** Wipe the scrollback. */
   clearHistory: () => void;
   /** Programmatically run another command line. */

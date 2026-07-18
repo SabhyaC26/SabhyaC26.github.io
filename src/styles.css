@@ -391,6 +391,20 @@ body {
   border-radius: 999px;
   padding: 1px 9px;
 }
+button.chip-btn {
+  font: inherit;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+button.chip-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
 
 .kv {
   display: grid;
@@ -418,6 +432,114 @@ body {
   position: absolute;
   left: 0;
   color: var(--accent);
+}
+
+/* ───────────────────────── experience accordion ───────────────────────── */
+
+.exp-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.exp-item {
+  border-bottom: 1px dashed color-mix(in srgb, var(--fg) 18%, transparent);
+}
+
+.exp-item:last-child {
+  border-bottom: none;
+}
+
+.exp-row {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px 14px;
+  width: 100%;
+  margin: 0;
+  padding: 9px 2px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.exp-row:hover {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.exp-row:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.exp-org {
+  color: var(--fg);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.exp-role {
+  color: var(--fg-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exp-period {
+  color: var(--fg-faint);
+  font-size: 12px;
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.exp-detail {
+  padding: 0 2px 12px;
+  animation: exp-open 0.18s ease;
+}
+
+.exp-location {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+@keyframes exp-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 560px) {
+  .exp-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "org period"
+      "role role";
+    gap: 2px 10px;
+    padding: 10px 2px;
+  }
+
+  .exp-org {
+    grid-area: org;
+  }
+
+  .exp-role {
+    grid-area: role;
+    white-space: normal;
+  }
+
+  .exp-period {
+    grid-area: period;
+  }
 }
 
 /* ─────────────────────────────── prompt ─────────────────────────────── */
@@ -515,6 +637,20 @@ body {
   gap: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.statusbar .seg[role="button"] {
+  border-radius: 6px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.statusbar .seg[role="button"]:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--fg-muted);
+}
+.statusbar .seg[role="button"]:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
 }
 .statusbar .seg.path {
   color: var(--fg-muted);
@@ -651,6 +787,55 @@ body {
   padding: 18px;
   color: var(--fg-faint);
   text-align: center;
+}
+
+/* ───────────────────────────── theme picker ───────────────────────────── */
+
+.theme-picker {
+  width: min(420px, 92%);
+}
+.theme-picker-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.theme-picker-title {
+  font-size: 15px;
+  color: var(--fg);
+  font-weight: 600;
+}
+.theme-picker-hint {
+  font-size: 11px;
+  color: var(--fg-faint);
+  letter-spacing: 0.02em;
+}
+.theme-picker-item {
+  align-items: center;
+}
+.theme-swatch {
+  display: inline-flex;
+  gap: 3px;
+  flex: none;
+}
+.theme-swatch span {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
+}
+.theme-check {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 13px;
+}
+.theme-picker-item.selected .name {
+  color: var(--accent);
+}
+.theme-picker:focus {
+  outline: none;
 }
 
 /* ─────────────────────────────── mobile ─────────────────────────────── */

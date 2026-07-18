@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Command, CommandCategory, ThemeName } from "./types";
 import { portfolio } from "../content/portfolio";
 import { themeOrder, themes } from "./themes";
@@ -27,61 +28,45 @@ function About() {
   );
 }
 
-function Projects() {
-  return (
-    <div className="out">
-      {portfolio.projects.map((proj) => (
-        <div className="card" key={proj.name}>
-          <div className="card-head">
-            {proj.link ? (
-              <a className="card-name" href={proj.link} target="_blank" rel="noreferrer">
-                {proj.name}
-              </a>
-            ) : (
-              <span className="card-name">{proj.name}</span>
-            )}
-            {proj.year && <span className="card-year">{proj.year}</span>}
-          </div>
-          <div className="card-tag">{proj.tagline}</div>
-          <div className="card-desc">{proj.description}</div>
-          <div className="stack">
-            {proj.stack.map((s) => (
-              <span className="chip" key={s}>
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function Experience() {
+  const [open, setOpen] = useState<number | null>(null);
+
   return (
     <div className="out">
-      {portfolio.experience.map((job, i) => (
-        <div className="card" key={i}>
-          <div className="card-head">
-            <span className="card-name">{job.role}</span>
-            <span className="card-year">{job.period}</span>
-          </div>
-          <div className="card-tag muted">
-            {job.org}
-            {job.location ? ` · ${job.location}` : ""}
-          </div>
-          <div className="card-desc">{job.summary}</div>
-          {job.highlights && (
-            <ul className="list-tight" style={{ marginTop: "6px" }}>
-              {job.highlights.map((h, j) => (
-                <li key={j} className="muted">
-                  {h}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ))}
+      <div className="exp-list">
+        {portfolio.experience.map((job, i) => {
+          const isOpen = open === i;
+          return (
+            <div className={`exp-item${isOpen ? " is-open" : ""}`} key={i}>
+              <button
+                type="button"
+                className="exp-row"
+                onClick={() => setOpen(isOpen ? null : i)}
+                aria-expanded={isOpen}
+              >
+                <span className="exp-org">{job.org}</span>
+                <span className="exp-role">{job.role}</span>
+                <span className="exp-period">{job.period}</span>
+              </button>
+              {isOpen && (
+                <div className="exp-detail">
+                  {job.location && <div className="exp-location muted">{job.location}</div>}
+                  <div className="card-desc">{job.summary}</div>
+                  {job.highlights && (
+                    <ul className="list-tight" style={{ marginTop: "6px" }}>
+                      {job.highlights.map((h, j) => (
+                        <li key={j} className="muted">
+                          {h}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -153,7 +138,7 @@ function Help() {
         })}
       </div>
       <p className="faint" style={{ marginTop: "12px" }}>
-        ↑/↓ history · Tab to complete · ⌘K / Ctrl+K command palette
+        ↑/↓ history · Tab to complete · Enter to select · ⌘K / Ctrl+K command palette
       </p>
     </div>
   );
@@ -174,12 +159,6 @@ export const commands: Command[] = [
     summary: "who I am",
     category: "about",
     run: () => <About />,
-  },
-  {
-    name: "projects",
-    summary: "things I've built",
-    category: "work",
-    run: () => <Projects />,
   },
   {
     name: "experience",
@@ -216,12 +195,13 @@ export const commands: Command[] = [
   },
   {
     name: "theme",
-    usage: "/theme <name>",
+    usage: "/theme [name]",
     summary: "switch color theme",
     category: "system",
     run: (ctx) => {
       const name = ctx.args[0]?.toLowerCase();
       if (!name) {
+        ctx.openThemePicker();
         return (
           <div className="out">
             <p className="muted">
@@ -229,19 +209,21 @@ export const commands: Command[] = [
             </p>
             <div className="stack">
               {themeOrder.map((t) => (
-                <span
+                <button
                   key={t}
-                  className="chip"
+                  type="button"
+                  className={`chip chip-btn${t === ctx.theme ? " chip-active" : ""}`}
                   style={{
                     borderColor: t === ctx.theme ? themes[t].colors.accent : undefined,
                     color: t === ctx.theme ? themes[t].colors.accent : undefined,
                   }}
+                  onClick={() => ctx.setTheme(t)}
                 >
                   {t}
-                </span>
+                </button>
               ))}
             </div>
-            <p className="faint">usage: /theme &lt;name&gt;</p>
+            <p className="faint">click a theme, or use the picker</p>
           </div>
         );
       }

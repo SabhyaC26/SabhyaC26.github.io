@@ -11,12 +11,15 @@ import type { CommandContext, HistoryEntry, ThemeName } from "./types";
 import { completionNames, findCommand, suggestCommand } from "./commands";
 import { defaultTheme, themeOrder, themeVars, themes } from "./themes";
 import { portfolio } from "../content/portfolio";
+import { Desktop } from "../desktop/Desktop";
+import { Window } from "../desktop/Window";
 import { Banner } from "./components/Banner";
 import { Prompt } from "./components/Prompt";
 import { StatusBar } from "./components/StatusBar";
 import { Autocomplete } from "./components/Autocomplete";
 import type { Suggestion } from "./components/Autocomplete";
 import { CommandPalette } from "./components/CommandPalette";
+import { ThemePicker } from "./components/ThemePicker";
 
 const THEME_KEY = "tp:theme";
 const isMac =
@@ -54,12 +57,13 @@ export function Terminal() {
   const [theme, setTheme] = useState<ThemeName>(loadTheme);
   const [focused, setFocused] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [acIndex, setAcIndex] = useState(0);
   const [acDismissed, setAcDismissed] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const screenRef = useRef<HTMLDivElement>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
   const cmdHistoryRef = useRef<string[]>([]);
   const histIndexRef = useRef<number | null>(null);
@@ -121,6 +125,7 @@ export function Terminal() {
         raw,
         theme,
         setTheme: applyTheme,
+        openThemePicker: () => setThemePickerOpen(true),
         clearHistory,
         runCommand: (next) => execute(next),
       };
@@ -176,9 +181,9 @@ export function Terminal() {
     if (!paletteOpen) inputRef.current?.focus();
   }, [paletteOpen]);
 
-  // Apply theme colors as CSS variables (before paint, so no flash).
+  // Apply theme colors as CSS variables on the window (before paint, so no flash).
   useLayoutEffect(() => {
-    const el = screenRef.current;
+    const el = windowRef.current;
     if (!el) return;
     const vars = themeVars(themes[theme].colors);
     for (const [key, value] of Object.entries(vars)) {
@@ -215,7 +220,11 @@ export function Terminal() {
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        const value = input;
+        let value = input;
+        if (showAutocomplete) {
+          const pick = suggestions[acIndex] ?? suggestions[0];
+          if (pick) value = `/${pick.name}`;
+        }
         setInput("");
         setAcDismissed(true);
         execute(value);
@@ -274,18 +283,13 @@ export function Terminal() {
     [acIndex, clearHistory, complete, execute, input, showAutocomplete, suggestions],
   );
 
-  const cycleTheme = useCallback(() => {
-    const [currentBrand, currentMode] = theme.split("-") as [string, string];
-    const brands = ["github", "vercel", "claude"];
-    const nextBrand = brands[(brands.indexOf(currentBrand) + 1) % brands.length];
-    applyTheme(`${nextBrand}-${currentMode}` as ThemeName);
-  }, [applyTheme, theme]);
-
   const toggleMode = useCallback(() => {
     const [currentBrand, currentMode] = theme.split("-") as [string, string];
     const nextMode = currentMode === "dark" ? "light" : "dark";
     applyTheme(`${currentBrand}-${nextMode}` as ThemeName);
   }, [applyTheme, theme]);
+
+  const openThemePicker = useCallback(() => setThemePickerOpen(true), []);
 
   const focusInput = useCallback((e: ReactMouseEvent) => {
     const target = e.target as HTMLElement;
@@ -307,9 +311,9 @@ export function Terminal() {
             />
             <button
               className="dot yellow"
-              title="cycle theme"
-              aria-label="cycle theme"
-              onClick={cycleTheme}
+              title="themes"
+              aria-label="open theme picker"
+              onClick={openThemePicker}
             />
             <button
               className="dot green"
@@ -370,14 +374,32 @@ export function Terminal() {
           theme={theme}
           metaLabel={META_LABEL}
           onOpenPalette={() => setPaletteOpen(true)}
-          onCycleTheme={cycleTheme}
+          onOpenThemePicker={openThemePicker}
           onToggleMode={toggleMode}
         />
 
         {paletteOpen && (
           <CommandPalette
             onClose={() => setPaletteOpen(false)}
-            onRun={(name) => execute(name)}
+            onRun={(name) => {
+              if (name === "theme") {
+                setPaletteOpen(false);
+                setThemePickerOpen(true);
+                return;
+              }
+              execute(name);
+            }}
+          />
+        )}
+
+        {themePickerOpen && (
+          <ThemePicker
+            current={theme}
+            onSelect={applyTheme}
+            onClose={() => {
+              setThemePickerOpen(false);
+              inputRef.current?.focus();
+            }}
           />
         )}
       </div>
