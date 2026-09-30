@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Some Raw (non-exhaustive) Thoughts on the Personal Agents Space — Sabhya Chhabria</title>
+    <meta
+      name="description"
+      content="Some raw, non-exhaustive thoughts on the personal agents space."
+    />
+    <style>
+      :root {
+        --fg: #111;
+        --muted: #6b7280;
+        --bg: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #f3f4f6;
+          --muted: #9ca3af;
+          --bg: #0b0d10;
+        }
+      }
+      body {
+        margin: 0 auto;
+        max-width: 36rem;
+        padding: 3rem 2rem;
+        background: var(--bg);
+        color: var(--fg);
+        font: 400 0.95rem/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+      .back {
+        color: var(--muted);
+        display: inline-block;
+        font-size: 0.8rem;
+        margin-bottom: 2.5rem;
+        text-decoration: none;
+      }
+      .back:hover {
+        text-decoration: underline;
+      }
+      h1 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.45;
+        margin: 0 0 0.5rem;
+      }
+      .byline {
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin: 0 0 2.5rem;
+      }
+      .thoughts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .thoughts > li {
+        margin: 0 0 2rem;
+        padding-left: 1.2rem;
+        position: relative;
+      }
+      .thoughts > li::before {
+        color: var(--muted);
+        content: "•";
+        left: 0;
+        position: absolute;
+      }
+      .thoughts p {
+        margin: 0;
+      }
+      .source-link {
+        color: var(--muted);
+      }
+      @media (max-width: 30rem) {
+        body {
+          padding: 2rem 1rem;
+        }
+        .back {
+          margin-bottom: 2rem;
+        }
+        .byline {
+          margin-bottom: 2rem;
+        }
+        .thoughts > li {
+          padding-left: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="back" href="/">← Sabhya Chhabria</a>
+    <main>
+      <article>
+        <header>
+          <h1>Some Raw (non-exhaustive) Thoughts on the Personal Agents Space</h1>
+          <p class="byline">
+            By Sabhya Chhabria · <time datetime="2026-09-30">September 30, 2026</time>
+          </p>
+        </header>
+        <ul class="thoughts">
+          <li>
+            <p>I am yet to experience that “wow” moment that a lot of us experienced when using coding agents like Claude Code / Cursor in 2025.</p>
+          </li>
+          <li>
+            <p>The use cases are not immediately obvious / sticky. Booking flights is being touted as the marquee use case for personal agents. However, I believe that the average person (myself included) only has &lt;5 flights to book and enjoys the experience. If you travel for work every week, I can see how using an agent to book flights would be a chore taken care off. For someone who is not traveling / shopping / ordering takeout / making dinner reservations (aka the average consumer) the value proposition feels a bit contrived.</p>
+          </li>
+          <li>
+            <p>I have been using Muse / Instinct to track progress on a few personal goals. I use them to create mini sites within the apps to track calories / fitness progress / reading progress etc. I do think there’s a big opportunity to displace incumbent software (historically just a system of record like MyFitnessPal / Goodreads that is not delightful to use and bring that surface natively into the personal agents world. This opens up an opportunity for custom and pre-designed apps.</p>
+          </li>
+          <li>
+            <p>Personal agents like Grok Bot / Muse / Dot / Instinct are a step in the right direction. Although they don’t offer anything new from a capabilities standpoint, it is nice to have a few “chats” that are persisted and compound forever (like a cast iron pan) instead of ephemeral threads.</p>
+          </li>
+          <li>
+            <p>On the product side, all the builders are converging on the exact same offering. Grok Bot / Muse / Dot / Instinct are all at their core, an agent harness that is built for being persistent over the long horizon, has connectors (G Suite, Shopify, Notion etc), has memory (that develops over time), scheduled tasks and reminders, accessible via other surfaces like WhatsApp / iMessage, in built browser running in a VM, secure password store, full duplex voice mode, etc (credit: <a class="source-link" href="https://x.com/signulll/status/2102075438365335838" aria-label="Source on X">source</a>). There’s no real differentiation. Everyone is coming at the problem from the same angle. Even the anthropomorphic characters look the same (GrokBot / Dot / Cue). Instinct doesn’t have a mascot and Muse did a nice job here by giving its mascot more customizability + a slightly different look.</p>
+          </li>
+          <li>
+            <p>When everyone is building the exact same thing, there’s no obvious reason that draws me to any one of these personal agents. I believe the average consumer would end up sticking to the one they’re used to. Unlike coding agents, switching costs may be higher on the personal agents side. If you have a lot of memory + custom assets (like my calorie tracking app / fitness tracking app) that are built + stored on the host side, moving away might be harder. It does take a lot of time to incubate this “relationship” with your personal agent though.</p>
+          </li>
+          <li>
+            <p>Maybe there’s an opportunity for a narrow + but elevated experience like a personal finance / fitness agent that consumers would be willing to pay for and would have markedly different features + value proposition. This feels a little less AI pilled to me though.</p>
+          </li>
+          <li>
+            <p>The biggest lock in on the personal agent side (my hypothesis) will have to be something social. If all your friends are using Muse and have unlocked some second order network effects, then it’s only natural for you to want to use it. The current use cases for multiplayer personal agents feel too contrived. Having my Instinct coordinate a flight / plan trips with my friends Instinct feels counterintuitive (<a class="source-link" href="https://x.com/noahrshinn/status/2097794967574028448" aria-label="Source on X">source</a>). All these use cases make me talk to the people I like less (when adult loneliness / isolation is at an all time high).</p>
+          </li>
+          <li>
+            <p>The monetization strategy for personal agents is still unclear. The early contenders seems like Ads / taking a cut on purchases. Meta is at a natural advantage when it comes to ads. Even if they don’t push ads through Muse, they can use the data to improve ads on Instagram / Facebook.</p>
+          </li>
+          <li>
+            <p>It was estimated that running personal agents (<a class="source-link" href="https://x.com/illscience/status/2103941433883557983" aria-label="Source on X">source</a>) costs around $3k-$7k per user per year. At this point Meta is the only one who can afford to truly subsidize this experience. Instinct has an invite only system and has to keep raising money to pay for infra costs. OpenAI Dots is gated only to the Pro tier subsection for now. Similarly Grok Bot gives you very little free tier usage. Curious to see what Google and Apple do given their strong financial positions.</p>
+          </li>
+          <li>
+            <p>Large portions of the internet will have to be redesigned for an agent first experience. If people truly end up using their agents to buy things / order food, then time spent browsing on sites like Amazon / DoorDash will affect their ad revenue. It will be interesting to see how this lane evolves and how these experiences (if at all) evolve into agent native experiences.</p>
+          </li>
+        </ul>
+      </article>
+    </main>
+  </body>
+</html>
