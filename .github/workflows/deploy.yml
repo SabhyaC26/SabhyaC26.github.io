@@ -25,9 +25,7 @@ jobs:
           mkdir _site
           cp index.html _site/
           cp -R writing _site/
-          mkdir _site/places
-          cp places/index.html places/world.json places/photos.json _site/places/
-          if [ -d places/photos ]; then cp -R places/photos _site/places/; fi
+          cp -R sf _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
