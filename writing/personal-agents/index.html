@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
+    <script>
+      document.documentElement.dataset.theme = localStorage.theme || "dark";
+    </script>
     <title>Some Raw (non-exhaustive) Thoughts on the Personal Agents Space — Sabhya Chhabria</title>
     <meta
       name="description"
@@ -11,22 +13,27 @@
     />
     <style>
       :root {
-        --fg: #111;
-        --muted: #6b7280;
-        --bg: #fff;
+        color-scheme: dark;
+        --fg: #ece9e2;
+        --muted: #8a8780;
+        /* matte black with a faint paper tooth */
+        --paper: #0c0c0c;
+        --tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --fg: #f3f4f6;
-          --muted: #9ca3af;
-          --bg: #0b0d10;
-        }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --fg: #1a1918;
+        --muted: #6f6a62;
+        --paper: #f4f1ea;
+        --tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      html {
+        background: var(--paper) var(--tooth);
       }
       body {
         margin: 0 auto;
         max-width: 36rem;
         padding: 3rem 2rem;
-        background: var(--bg);
         color: var(--fg);
         font: 400 0.95rem/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
@@ -34,15 +41,32 @@
       a {
         color: inherit;
       }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2.5rem;
+      }
       .back {
         color: var(--muted);
-        display: inline-block;
         font-size: 0.8rem;
-        margin-bottom: 2.5rem;
         text-decoration: none;
       }
-      .back:hover {
-        text-decoration: underline;
+      .back:hover,
+      #theme:hover {
+        color: var(--fg);
+      }
+      #theme {
+        display: flex;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      :root[data-theme="dark"] .moon,
+      :root[data-theme="light"] .sun {
+        display: none;
       }
       h1 {
         font-size: 1.05rem;
@@ -81,7 +105,7 @@
         body {
           padding: 2rem 1rem;
         }
-        .back {
+        .top {
           margin-bottom: 2rem;
         }
         .byline {
@@ -94,7 +118,15 @@
     </style>
   </head>
   <body>
-    <a class="back" href="/">← Sabhya Chhabria</a>
+    <nav class="top">
+      <a class="back" href="/">← Sabhya Chhabria</a
+      ><button id="theme" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <g class="sun"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></g>
+          <path class="moon" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
+        </svg>
+      </button>
+    </nav>
     <main>
       <article>
         <header>
@@ -140,5 +172,21 @@
         </ul>
       </article>
     </main>
+    <script>
+      const themeButton = document.getElementById("theme");
+      const nextTheme = () => (document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+      const showTheme = () => themeButton.setAttribute("aria-label", `Switch to ${nextTheme()} mode`);
+      themeButton.addEventListener("click", () => {
+        localStorage.theme = document.documentElement.dataset.theme = nextTheme();
+        showTheme();
+      });
+      showTheme();
+      // Another tab switched the theme: follow it.
+      addEventListener("storage", (e) => {
+        if (e.key !== "theme") return;
+        document.documentElement.dataset.theme = e.newValue || "dark";
+        showTheme();
+      });
+    </script>
   </body>
 </html>

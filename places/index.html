@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      document.documentElement.dataset.theme = localStorage.theme || "dark";
+    </script>
+    <title>Places · Sabhya Chhabria</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --fg: #ece9e2;
+        --muted: #8a8780;
+        --line: #2a2826;
+        --paper: #0c0c0c;
+        --frame: #ece9e2;
+        --frame-ink: #1a1918;
+        --tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --fg: #1a1918;
+        --muted: #6f6a62;
+        --line: #dcd7cc;
+        --paper: #f4f1ea;
+        --frame: #fffdf8;
+        --tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      html {
+        background: var(--paper) var(--tooth);
+        color: var(--fg);
+        font: 400 0.95rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      body {
+        margin: 0;
+        height: 100vh;
+        height: 100dvh;
+        display: grid;
+        grid-template-columns: 1fr 22rem;
+        overflow: hidden;
+      }
+      a {
+        color: inherit;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+
+      /* map */
+      #map {
+        position: relative;
+        overflow: hidden;
+        touch-action: none;
+        cursor: grab;
+        outline: none;
+      }
+      #map:active {
+        cursor: grabbing;
+      }
+      #ink {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .pin {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform: translate(calc(var(--x) * 1px - 50%), calc(var(--y) * 1px - 50%));
+        transition: opacity 0.25s;
+      }
+      .pin.dim {
+        opacity: 0.18;
+      }
+      .pin canvas {
+        display: block;
+        width: 30px;
+        height: 30px;
+      }
+      .pin b {
+        position: absolute;
+        inset: 0;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        font-size: 0.72rem;
+        color: #111;
+      }
+      .label {
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        translate: -50% 2px;
+        white-space: nowrap;
+        font-size: 0.75rem;
+        color: var(--fg);
+        text-shadow: 0 0 4px var(--paper), 0 0 2px var(--paper);
+        pointer-events: none;
+      }
+      .dot .label {
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .dot:hover .label,
+      .dot:focus-visible .label {
+        opacity: 1;
+      }
+      .dot:hover canvas,
+      .dot.on canvas {
+        scale: 1.15;
+      }
+      .card {
+        z-index: 1;
+      }
+      .card img {
+        display: block;
+        width: 74px;
+        height: 74px;
+        object-fit: cover;
+        border: 4px solid var(--frame);
+        border-bottom-width: 14px;
+        rotate: var(--tilt);
+        transition: rotate 0.2s, scale 0.2s;
+      }
+      .card.many::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto;
+        height: 92px;
+        background: var(--frame);
+        rotate: calc(var(--tilt) * -2.2);
+        opacity: 0.55;
+      }
+      .card:hover img,
+      .card:focus-visible img,
+      .card.on img {
+        rotate: 0deg;
+        scale: 1.08;
+      }
+      .pin:focus-visible {
+        outline: 2px dashed var(--fg);
+        outline-offset: 4px;
+      }
+      #zoom {
+        position: absolute;
+        left: 1rem;
+        bottom: 1rem;
+        display: flex;
+        gap: 0.25rem;
+      }
+      #zoom button {
+        width: 2rem;
+        height: 2rem;
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        color: var(--muted);
+        background: var(--paper);
+      }
+      #zoom button:hover {
+        color: var(--fg);
+      }
+
+      /* panel */
+      aside {
+        border-left: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      aside header {
+        padding: 1.25rem 1.25rem 0.75rem;
+      }
+      aside nav {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+      }
+      aside nav a {
+        text-decoration: none;
+      }
+      aside nav a:hover,
+      #back:hover {
+        color: var(--fg);
+      }
+      #q {
+        width: 100%;
+        box-sizing: border-box;
+        font: inherit;
+        color: var(--fg);
+        background: transparent;
+        border: 1.5px solid var(--line);
+        border-radius: 99px;
+        padding: 0.45rem 0.9rem;
+        outline: none;
+      }
+      #q:focus {
+        border-color: var(--muted);
+      }
+      #view {
+        overflow-y: auto;
+        padding: 0 1.25rem 2rem;
+        flex: 1;
+      }
+      h1 {
+        font-size: 1.05rem;
+        margin: 0.75rem 0 0.1rem;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin: 0 0 1rem;
+      }
+      #back {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+      h2 {
+        font-size: 0.8rem;
+        font-weight: 400;
+        color: var(--muted);
+        margin: 1.5rem 0 0.4rem;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .places li button {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 0.2rem 0;
+        text-align: left;
+      }
+      .places li button:hover {
+        color: var(--muted);
+      }
+      .places small {
+        color: var(--muted);
+      }
+      .swatch {
+        display: inline-block;
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem 0.75rem;
+      }
+      .grid button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: var(--frame);
+        color: var(--frame-ink);
+        padding: 5px 5px 0;
+        rotate: var(--tilt);
+        transition: rotate 0.2s;
+      }
+      .grid button:hover,
+      .grid button:focus-visible {
+        rotate: 0deg;
+      }
+      .grid img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+        background: var(--line);
+      }
+      .grid span {
+        display: block;
+        font-size: 0.72rem;
+        line-height: 1.3;
+        padding: 0.3rem 0.1rem 0.45rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* lightbox */
+      dialog {
+        border: 0;
+        padding: 0;
+        background: none;
+        max-width: none;
+        max-height: none;
+        overflow: visible;
+      }
+      dialog::backdrop {
+        background: rgb(0 0 0 / 0.82);
+        backdrop-filter: blur(3px);
+      }
+      figure {
+        margin: 0;
+        background: var(--frame);
+        color: var(--frame-ink);
+        padding: 10px 10px 0;
+        rotate: -0.6deg;
+      }
+      figure img {
+        display: block;
+        max-width: min(86vw, 1400px);
+        max-height: 76vh;
+        background: #222 center / cover;
+      }
+      figcaption {
+        padding: 0.6rem 0.2rem 0.8rem;
+        font-size: 0.9rem;
+      }
+      figcaption small {
+        display: block;
+        color: #6f6a62;
+        font-size: 0.75rem;
+        margin-top: 0.15rem;
+      }
+      .nav {
+        position: fixed;
+        top: 50%;
+        translate: 0 -50%;
+        font-size: 2.5rem;
+        color: #ece9e2;
+        padding: 1rem;
+      }
+      #prev {
+        left: 0.5rem;
+      }
+      #next {
+        right: 0.5rem;
+      }
+      #close {
+        position: fixed;
+        top: 0.75rem;
+        right: 1rem;
+        font-size: 1.8rem;
+        color: #ece9e2;
+      }
+      .nav[hidden] {
+        display: none;
+      }
+
+      @media (max-width: 700px) {
+        body {
+          grid-template-columns: 1fr;
+          grid-template-rows: 1fr 44dvh;
+        }
+        aside {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+        .grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="map" tabindex="0" aria-label="Map of places I've been. Drag or use arrow keys to move, scroll or +/− to zoom.">
+      <canvas id="ink" aria-hidden="true"></canvas>
+      <div id="pins"></div>
+      <div id="zoom">
+        <button id="zin" type="button" aria-label="Zoom in">+</button>
+        <button id="zout" type="button" aria-label="Zoom out">−</button>
+        <button id="zfit" type="button" aria-label="Show the whole world">○</button>
+      </div>
+    </main>
+    <aside>
+      <header>
+        <nav><a href="/">← home</a><span id="total"></span></nav>
+        <input id="q" type="search" placeholder="search photos — temple, snow, ocean…" aria-label="Search photos by what's in them" autocomplete="off" />
+      </header>
+      <div id="view" aria-live="polite"></div>
+    </aside>
+    <dialog id="box" aria-label="Photo">
+      <button id="close" type="button" aria-label="Close">×</button>
+      <button id="prev" class="nav" type="button" aria-label="Previous photo">‹</button>
+      <figure><img id="big" alt="" /><figcaption id="cap"></figcaption></figure>
+      <button id="next" class="nav" type="button" aria-label="Next photo">›</button>
+    </dialog>
+    <script>
+      // A posca world map. Outlines are vector strokes and filled countries use a tile of real marker
+      // hatching kept at screen scale, so every frame is redrawn from scratch: crisp at any zoom, no repaint.
+      const DPR = Math.min(devicePixelRatio || 1, 2);
+      const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const COVER = 0.9;
+      const INKS = ["#ff6aa2", "#ff7a1c", "#4fc3f7", "#ffd21f", "#7ee07a", "#b39dff"];
+      const $ = (id) => document.getElementById(id);
+
+      // ---- marker (same engine as the homepage, with per-stroke colour and tip size) ----
+
+      function noise() {
+        const v = Array.from({ length: 256 }, Math.random);
+        return (t) => {
+          const i = Math.floor(t), f = t - i, u = f * f * (3 - 2 * f);
+          return v[i & 255] * (1 - u) + v[(i + 1) & 255] * u;
+        };
+      }
+
+      function layer(w, h) {
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        return c;
+      }
+
+      const grain = (() => {
+        const c = layer(128, 128), g = c.getContext("2d"), img = g.createImageData(128, 128);
+        for (let i = 3; i < img.data.length; i += 4) img.data[i] = Math.random() < 0.025 ? 30 + Math.random() * 80 : 0;
+        g.putImageData(img, 0, 0);
+        return c;
+      })();
+
+      function Brush(w, h) {
+        const paint = layer(w, h), streak = layer(w, h), out = layer(w, h);
+        const p = paint.getContext("2d"), s = streak.getContext("2d"), o = out.getContext("2d");
+        let fibres, wob, dist, r;
+        return {
+          reset(color, radius) {
+            p.clearRect(0, 0, w, h);
+            s.clearRect(0, 0, w, h);
+            p.fillStyle = color;
+            r = radius;
+            fibres = Array.from({ length: 11 }, () => ({ off: (Math.random() * 2 - 1) * 0.9, n: noise() }));
+            wob = noise();
+            dist = 0;
+          },
+          stamp(x, y, nx, ny, step, speed) {
+            dist += step;
+            const fresh = Math.exp(-dist / (r * 1.4));
+            const rad = r * (1 + 0.16 * fresh + 0.07 * (wob(dist / (r * 2)) - 0.5)) + (Math.random() - 0.5) * 0.08 * r;
+            p.beginPath();
+            p.arc(x, y, rad, 0, 7);
+            p.fill();
+            const dry = (0.25 + 0.75 * speed) * (1 - fresh);
+            const dot = Math.max(0.55 * DPR, r * 0.06);
+            for (const f of fibres) {
+              const k = Math.max(0, f.n(dist / (r * 2.5)) - 0.62) * dry;
+              if (!k) continue;
+              s.fillStyle = `rgb(0 0 0 / ${Math.min(1, (k * 0.4 * step) / dot)})`;
+              s.beginPath();
+              s.arc(x + nx * f.off * rad, y + ny * f.off * rad, dot, 0, 7);
+              s.fill();
+            }
+          },
+          render() {
+            o.globalCompositeOperation = "copy";
+            o.drawImage(paint, 0, 0);
+            o.globalCompositeOperation = "destination-out";
+            o.drawImage(streak, 0, 0);
+            return out;
+          },
+        };
+      }
+
+      // strokes: [{pts: [{x, y}], color, r}]
+      function play(canvas, strokes, ms, done) {
+        const ctx = canvas.getContext("2d");
+        const { width: w, height: h } = canvas;
+        const base = layer(w, h), b = base.getContext("2d");
+        const brush = Brush(w, h);
+        const tooth = ctx.createPattern(grain, "repeat");
+        let total = 0;
+        const plan = strokes.map(({ pts }) =>
+          pts.map((q, i) => {
+            const a = pts[Math.max(0, i - 1)], c = pts[Math.min(pts.length - 1, i + 1)];
+            const dx = c.x - a.x, dy = c.y - a.y, len = Math.hypot(dx, dy) || 1;
+            const a2 = pts[Math.max(0, i - 6)], c2 = pts[Math.min(pts.length - 1, i + 6)];
+            const t1 = Math.atan2(q.y - a2.y, q.x - a2.x), t2 = Math.atan2(c2.y - q.y, c2.x - q.x);
+            const bend = Math.abs(Math.atan2(Math.sin(t2 - t1), Math.cos(t2 - t1)));
+            const speed = 1 / (1 + 2.5 * bend);
+            const step = i ? Math.hypot(q.x - pts[i - 1].x, q.y - pts[i - 1].y) : 0;
+            total += step / speed;
+            return { x: q.x, y: q.y, nx: -dy / len, ny: dx / len, step, speed, cost: step / speed };
+          })
+        );
+        const comp = (g) => {
+          g.globalAlpha = COVER;
+          g.drawImage(brush.render(), 0, 0);
+          g.globalAlpha = 1;
+        };
+        const scale = ms / (total || 1);
+        let si = 0, pi = 0, budget = 0, last = null, lifted = false;
+        const draw = () => {
+          ctx.globalCompositeOperation = "copy";
+          ctx.drawImage(base, 0, 0);
+          ctx.globalCompositeOperation = "source-over";
+          if (pi) comp(ctx);
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.fillStyle = tooth;
+          ctx.fillRect(0, 0, w, h);
+          ctx.globalCompositeOperation = "source-over";
+        };
+        const tick = (now) => {
+          budget += last == null ? 16 : now - last;
+          last = now;
+          if (!ms) budget = Infinity;
+          while (si < plan.length && budget > 0) {
+            if (!lifted) {
+              brush.reset(strokes[si].color, strokes[si].r);
+              lifted = true;
+            }
+            const q = plan[si][pi++];
+            brush.stamp(q.x, q.y, q.nx, q.ny, q.step, q.speed);
+            budget -= q.cost * scale;
+            if (pi === plan[si].length) {
+              comp(b);
+              si++;
+              pi = 0;
+              lifted = false;
+            }
+          }
+          draw();
+          if (si < plan.length) canvas.raf = requestAnimationFrame(tick);
+          else done?.();
+        };
+        cancelAnimationFrame(canvas.raf);
+        canvas.raf = requestAnimationFrame(tick);
+      }
+
+      // ---- geography ----
+
+      // Natural Earth I projection (d3-geo-projection's naturalEarth1Raw), y pointing down.
+      function project(lon, lat) {
+        const l = (lon * Math.PI) / 180, p = (lat * Math.PI) / 180, p2 = p * p, p4 = p2 * p2;
+        return [
+          l * (0.8707 - 0.131979 * p2 + p4 * (-0.013791 + p4 * (0.003971 * p2 - 0.001529 * p4))),
+          -p * (1.007226 + p2 * (0.015085 + p4 * (-0.044475 + 0.028874 * p2 - 0.005916 * p4))),
+        ];
+      }
+      const WORLD_W = 2.75, WORLD_H = 1.45; // half-extents of the projected world
+
+      function bbox(pts) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const [x, y] of pts) {
+          x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+        }
+        return [x0, y0, x1, y1];
+      }
+
+      function inRing(ring, x, y) {
+        let inside = false;
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+          const [xi, yi] = ring[i], [xj, yj] = ring[j];
+          if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+      }
+
+      // ---- state ----
+
+      const ink = $("ink"), map = $("map"), pinsEl = $("pins"), g = ink.getContext("2d");
+      let world = [], photos = [], places = [];
+      let view = { k: 1, x: 0, y: 0 }, kFit = 1;
+      let selected = null, matches = null;
+      let coast = new Path2D(), coarse = new Path2D(), longest = 1, intro = 0; // outlines in world units; intro start
+      // Drop points closer than `eps` to the last kept one: the zoomed-out map doesn't need the detail.
+      function thin(ring, eps) {
+        const out = [ring[0]];
+        for (const q of ring) if (Math.hypot(q[0] - out.at(-1)[0], q[1] - out.at(-1)[1]) > eps) out.push(q);
+        return out;
+      }
+      const tiles = new Map(); // ink colour -> pattern of marker hatching
+      const tooth = g.createPattern(grain, "repeat");
+      const fg = () => getComputedStyle(document.documentElement).getPropertyValue("--fg").trim();
+      const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+
+      // A seamless patch of posca hatching painted once with the real brush: overlong strokes so the
+      // tile edges fall mid-stroke, rows that divide the tile evenly, a wobble with the tile's period.
+      function hatchTile(color) {
+        const r = 3.2 * DPR, gap = r * 1.5, rows = Math.round((256 * DPR) / gap), T = Math.round(rows * gap);
+        const c = layer(T, T), strokes = [];
+        for (let i = 0; i < rows; i++) {
+          const y = (i + 0.5) * gap + (Math.random() - 0.5) * gap * 0.25, ph = Math.random() * 7, pts = [];
+          for (let x = -T / 2; x <= T * 1.5; x += r * 0.5) pts.push({ x, y: y + Math.sin((x / T) * 2 * Math.PI + ph) * gap * 0.12 });
+          strokes.push({ pts, color, r });
+        }
+        play(c, strokes, 0, () => {
+          tiles.set(color, g.createPattern(c, "repeat"));
+          requestDraw();
+        });
+      }
+
+      let raf = 0;
+      const requestDraw = () => (raf ||= requestAnimationFrame(draw));
+
+      // The whole map, every frame: one stroke of all outlines, one pattern fill per coloured shape.
+      function draw(now) {
+        raf = 0;
+        const { k, x, y } = view, W = ink.width, H = ink.height;
+        const r = DPR * Math.min(2.1, 1 + Math.log2(Math.max(1, k / kFit)) * 0.22);
+        let lines = 1, fills = 1; // intro: outlines draw themselves, then the colour sweeps in
+        if (intro) {
+          const t = Math.max(0, Math.min(1, (now - intro) / 2600));
+          lines = ease(Math.min(1, t / 0.6));
+          fills = ease(Math.max(0, (t - 0.45) / 0.55));
+          t < 1 ? requestDraw() : (intro = 0);
+        }
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.clearRect(0, 0, W, H);
+        g.globalAlpha = COVER;
+        g.setTransform(k, 0, 0, k, x, y);
+        g.lineJoin = g.lineCap = "round";
+        g.lineWidth = (2 * r) / k;
+        g.strokeStyle = fg();
+        g.setLineDash(lines < 1 ? [lines ** 3 * longest, longest] : []); // dashes restart per ring, so small coasts finish first
+        g.stroke(k < kFit * 2 ? coarse : coast);
+        g.setLineDash([]);
+        const m = new DOMMatrix().scale(1 / k).rotate(-34); // texture stays screen-sized and pans with the map
+        for (const c of world) {
+          const pat = c.ink && tiles.get(c.ink);
+          if (!pat || c.bb[2] * k + x < 0 || c.bb[0] * k + x > W || c.bb[3] * k + y < 0 || c.bb[1] * k + y > H) continue;
+          pat.setTransform(m);
+          g.fillStyle = pat;
+          if (fills < 1) {
+            g.save();
+            g.beginPath();
+            g.rect(c.bb[0], c.bb[1], (c.bb[2] - c.bb[0]) * fills, c.bb[3] - c.bb[1]);
+            g.clip();
+            g.fill(c.path);
+            g.restore();
+          } else g.fill(c.path);
+        }
+        g.globalAlpha = 1;
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.globalCompositeOperation = "destination-out"; // paper tooth, pinned to the map
+        tooth.setTransform(new DOMMatrix().translate(x % 128, y % 128));
+        g.fillStyle = tooth;
+        g.fillRect(0, 0, W, H);
+        g.globalCompositeOperation = "source-over";
+        layoutPins();
+      }
+
+      function setView(k, x, y) {
+        const W = ink.width, H = ink.height;
+        k = Math.min(kFit * 120, Math.max(kFit * 0.9, k));
+        const cx = Math.max(-WORLD_W, Math.min(WORLD_W, (W / 2 - x) / k));
+        const cy = Math.max(-WORLD_H, Math.min(WORLD_H, (H / 2 - y) / k));
+        view = { k, x: W / 2 - cx * k, y: H / 2 - cy * k };
+        requestDraw();
+      }
+
+      function zoomAt(px, py, f) {
+        const k = Math.min(kFit * 120, Math.max(kFit * 0.9, view.k * f)), s = k / view.k;
+        setView(k, px - (px - view.x) * s, py - (py - view.y) * s);
+      }
+
+      // Glide to world point (wx, wy) at zoom k, easing zoom in log space.
+      function flyTo(wx, wy, k) {
+        const W = ink.width / 2, H = ink.height / 2, from = { ...view };
+        const fx = (W - from.x) / from.k, fy = (H - from.y) / from.k, t0 = performance.now();
+        cancelAnimationFrame(map.fly);
+        const step = (now) => {
+          const t = REDUCED ? 1 : Math.min(1, (now - t0) / 750), e = ease(t);
+          const kk = from.k * (k / from.k) ** e, cx = fx + (wx - fx) * e, cy = fy + (wy - fy) * e;
+          setView(kk, W - cx * kk, H - cy * kk);
+          if (t < 1) map.fly = requestAnimationFrame(step);
+        };
+        map.fly = requestAnimationFrame(step);
+      }
+
+      function fit() {
+        const W = ink.width, H = ink.height;
+        kFit = Math.min(W / (WORLD_W * 2.05), H / (WORLD_H * 2.1));
+        return { k: kFit, x: W / 2, y: H / 2 };
+      }
+
+      // ---- pins ----
+
+      function paintDot(c, color) {
+        const S = 30 * DPR, R = S / 2, r = R * 0.42, pts = [];
+        c.width = c.height = S;
+        for (let t = 0; t <= 1; t += 0.003) {
+          const a = t * Math.PI * 5, rr = (R - r - 1.5 * DPR) * Math.sqrt(t);
+          pts.push({ x: R + Math.cos(a) * rr, y: R + Math.sin(a) * rr });
+        }
+        play(c, [{ pts, color, r }], 0);
+      }
+
+      const pinEls = new Map();
+      // Greedy screen-space clustering: places within 40px merge into one dot with a count. A place
+      // with room around it shows its top photo as a little polaroid instead.
+      function layoutPins() {
+        const pos = places.map((p) => ({ p, x: (p.wx * view.k + view.x) / DPR, y: (p.wy * view.k + view.y) / DPR }));
+        const groups = [];
+        for (const q of [...pos].sort((a, b) => b.p.photos.length - a.p.photos.length)) {
+          const g = q.p !== selected && groups.find((g) => g.items[0].p !== selected && Math.hypot(g.x - q.x, g.y - q.y) < 40);
+          g ? g.items.push(q) : groups.push({ x: q.x, y: q.y, items: [q] });
+        }
+        const seen = new Set();
+        for (const g of groups) {
+          const near = Math.min(...groups.filter((o) => o !== g).map((o) => Math.hypot(o.x - g.x, o.y - g.y)), Infinity);
+          const card = g.items[0].p === selected || (g.items.length === 1 && near > 130 && view.k > kFit * 3);
+          const ids = g.items.map((q) => q.p.id);
+          const key = (card ? "c:" : "d:") + ids.join(",");
+          seen.add(key);
+          let el = pinEls.get(key);
+          if (!el) {
+            el = makePin(g.items.map((q) => q.p), card);
+            pinEls.set(key, el);
+            pinsEl.append(el);
+          }
+          el.style.setProperty("--x", g.x);
+          el.style.setProperty("--y", g.y);
+          el.classList.toggle("on", ids.includes(selected?.id));
+          el.classList.toggle("dim", !!matches && !g.items.some((q) => q.p.photos.some((ph) => matches.includes(ph))));
+        }
+        for (const [key, el] of pinEls) if (!seen.has(key)) (el.remove(), pinEls.delete(key));
+      }
+
+      function makePin(ps, card) {
+        const el = document.createElement("button");
+        const n = ps.reduce((s, p) => s + p.photos.length, 0);
+        el.type = "button";
+        el.className = "pin " + (card ? "card" : "dot") + (n > 1 ? " many" : "");
+        el.setAttribute("aria-label", `${ps.map((p) => p.name).join(", ")}: ${n} photo${n > 1 ? "s" : ""}`);
+        const label = document.createElement("span");
+        label.className = "label";
+        label.textContent = ps.length > 1 ? `${ps[0].name} +${ps.length - 1}` : ps[0].name;
+        if (card) {
+          const img = new Image();
+          img.src = ps[0].photos[0].thumb;
+          img.alt = "";
+          el.style.setProperty("--tilt", ps[0].tilt + "deg");
+          el.append(img, label);
+        } else {
+          const c = document.createElement("canvas"), b = document.createElement("b");
+          b.textContent = n;
+          el.append(c, b, label);
+          paintDot(c, ps[0].ink);
+        }
+        el.addEventListener("click", () => {
+          if (ps.length === 1) return selectPlace(ps[0]);
+          const bb = bbox(ps.map((p) => [p.wx, p.wy]));
+          const k = Math.min(ink.width * 0.4 / (bb[2] - bb[0] || 1e-9), ink.height * 0.4 / (bb[3] - bb[1] || 1e-9));
+          flyTo((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, k);
+        });
+        return el;
+      }
+
+      // ---- panel ----
+
+      const viewEl = $("view");
+      const month = (d) => new Date(d + "T12:00").toLocaleString("en", { month: "short", year: "numeric" });
+
+      function photoGrid(list, withPlace) {
+        const ul = document.createElement("ul");
+        ul.className = "grid";
+        list.forEach((ph, i) => {
+          const li = document.createElement("li"), b = document.createElement("button"), img = new Image(), s = document.createElement("span");
+          b.type = "button";
+          b.style.setProperty("--tilt", ph.tilt + "deg");
+          img.src = ph.thumb;
+          img.alt = ph.caption;
+          img.loading = "lazy";
+          s.textContent = withPlace ? ph.place : ph.caption || month(ph.date);
+          b.append(img, s);
+          b.addEventListener("click", () => openBox(list, i));
+          li.append(b);
+          ul.append(li);
+        });
+        return ul;
+      }
+
+      function showPlaces() {
+        selected = null;
+        viewEl.replaceChildren();
+        if (!places.length) {
+          const p = document.createElement("p");
+          p.className = "sub";
+          p.textContent = "No photos yet. The map's drawn; the paint comes with the next trip.";
+          return viewEl.append(p);
+        }
+        const byCountry = Map.groupBy(places, (p) => p.country);
+        for (const [country, ps] of byCountry) {
+          const h = document.createElement("h2"), sw = document.createElement("span"), ul = document.createElement("ul");
+          sw.className = "swatch";
+          sw.style.background = ps[0].ink;
+          h.append(sw, country);
+          ul.className = "places";
+          for (const p of ps) {
+            const li = document.createElement("li"), b = document.createElement("button"), small = document.createElement("small");
+            b.type = "button";
+            small.textContent = p.photos.length;
+            b.append(p.name, small);
+            b.addEventListener("click", () => selectPlace(p));
+            li.append(b);
+            ul.append(li);
+          }
+          viewEl.append(h, ul);
+        }
+        layoutPins();
+      }
+
+      function header(title, sub) {
+        const back = document.createElement("button"), h = document.createElement("h1"), p = document.createElement("p");
+        back.id = "back";
+        back.type = "button";
+        back.textContent = "← all places";
+        back.addEventListener("click", () => {
+          $("q").value = "";
+          matches = null;
+          showPlaces();
+        });
+        h.textContent = title;
+        p.className = "sub";
+        p.textContent = sub;
+        viewEl.replaceChildren(back, h, p);
+      }
+
+      function selectPlace(p) {
+        $("q").value = "";
+        matches = null;
+        selected = p;
+        const dates = p.photos.map((ph) => month(ph.date));
+        header(p.name, `${p.country} · ${p.photos.length} photo${p.photos.length > 1 ? "s" : ""} · ${[...new Set(dates)].join(", ")}`);
+        viewEl.append(photoGrid(p.photos));
+        flyTo(p.wx, p.wy, Math.max(view.k, kFit * 24));
+      }
+
+      function search(q) {
+        const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+        if (!words.length) {
+          matches = null;
+          return showPlaces();
+        }
+        selected = null;
+        matches = photos.filter((ph) => words.every((w) => ph.text.includes(w)));
+        header(`“${q.trim()}”`, matches.length ? `${matches.length} photo${matches.length > 1 ? "s" : ""}` : "nothing painted for that yet");
+        viewEl.append(photoGrid(matches, true));
+        layoutPins();
+      }
+
+      // ---- lightbox ----
+
+      const box = $("box"), big = $("big");
+      let boxList = [], boxAt = 0;
+
+      function openBox(list, i) {
+        boxList = list;
+        boxAt = (i + list.length) % list.length;
+        const ph = list[boxAt];
+        big.style.backgroundImage = `url(${ph.thumb})`; // the thumb is cached; the large one fades in over it
+        big.src = ph.src;
+        big.width = ph.w;
+        big.height = ph.h;
+        big.style.width = `min(86vw, 1400px, ${(76 * ph.w) / ph.h}vh)`;
+        big.style.height = "auto";
+        big.alt = ph.caption;
+        const small = document.createElement("small");
+        small.textContent = [`${ph.place}, ${ph.country}`, month(ph.date), ph.credit].filter(Boolean).join(" · ");
+        $("cap").replaceChildren(ph.caption, small);
+        $("prev").hidden = $("next").hidden = list.length < 2;
+        if (!box.open) box.showModal();
+        const p = places.find((p) => p.photos.includes(ph));
+        if (p !== selected) flyTo(p.wx, p.wy, Math.max(view.k, kFit * 14));
+      }
+
+      $("prev").addEventListener("click", () => openBox(boxList, boxAt - 1));
+      $("next").addEventListener("click", () => openBox(boxList, boxAt + 1));
+      $("close").addEventListener("click", () => box.close());
+      box.addEventListener("click", (e) => e.target === box && box.close());
+      box.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") openBox(boxList, boxAt - 1);
+        if (e.key === "ArrowRight") openBox(boxList, boxAt + 1);
+      });
+
+      // ---- input ----
+
+      const pointers = new Map();
+      map.addEventListener("pointerdown", (e) => {
+        if (e.target.closest("button")) return;
+        cancelAnimationFrame(map.fly);
+        map.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX * DPR, y: e.clientY * DPR });
+      });
+      map.addEventListener("pointermove", (e) => {
+        const prev = pointers.get(e.pointerId);
+        if (!prev) return;
+        const now = { x: e.clientX * DPR, y: e.clientY * DPR };
+        const other = [...pointers].find(([id]) => id !== e.pointerId)?.[1];
+        pointers.set(e.pointerId, now);
+        if (!other) return setView(view.k, view.x + now.x - prev.x, view.y + now.y - prev.y);
+        // pinch: zoom by the change in finger spread, around the midpoint, and pan with it
+        const f = Math.hypot(now.x - other.x, now.y - other.y) / (Math.hypot(prev.x - other.x, prev.y - other.y) || 1);
+        const r = map.getBoundingClientRect();
+        const mx = (now.x + other.x) / 2 - r.left * DPR, my = (now.y + other.y) / 2 - r.top * DPR;
+        setView(view.k, view.x + (now.x - prev.x) / 2, view.y + (now.y - prev.y) / 2);
+        zoomAt(mx, my, f);
+      });
+      for (const ev of ["pointerup", "pointercancel"]) map.addEventListener(ev, (e) => pointers.delete(e.pointerId));
+      map.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          cancelAnimationFrame(map.fly);
+          const r = map.getBoundingClientRect();
+          zoomAt((e.clientX - r.left) * DPR, (e.clientY - r.top) * DPR, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
+        },
+        { passive: false }
+      );
+      map.addEventListener("dblclick", (e) => {
+        if (e.target.closest("button")) return;
+        const r = map.getBoundingClientRect();
+        zoomAt((e.clientX - r.left) * DPR, (e.clientY - r.top) * DPR, 2);
+      });
+      map.addEventListener("keydown", (e) => {
+        if (e.target !== map) return;
+        const d = 80 * DPR, moves = { ArrowLeft: [d, 0], ArrowRight: [-d, 0], ArrowUp: [0, d], ArrowDown: [0, -d] };
+        if (moves[e.key]) setView(view.k, view.x + moves[e.key][0], view.y + moves[e.key][1]);
+        else if (e.key === "+" || e.key === "=") zoomAt(ink.width / 2, ink.height / 2, 1.5);
+        else if (e.key === "-") zoomAt(ink.width / 2, ink.height / 2, 1 / 1.5);
+        else return;
+        e.preventDefault();
+      });
+      $("zin").addEventListener("click", () => zoomAt(ink.width / 2, ink.height / 2, 1.8));
+      $("zout").addEventListener("click", () => zoomAt(ink.width / 2, ink.height / 2, 1 / 1.8));
+      $("zfit").addEventListener("click", () => flyTo(0, 0, kFit));
+      $("q").addEventListener("input", (e) => search(e.target.value));
+
+      // ---- boot ----
+
+      function size() {
+        const cx = (ink.width / 2 - view.x) / view.k, cy = (ink.height / 2 - view.y) / view.k, z = view.k / kFit;
+        ink.width = Math.round(map.clientWidth * DPR);
+        ink.height = Math.round(map.clientHeight * DPR);
+        fit();
+        requestDraw();
+        return { cx, cy, z };
+      }
+
+      Promise.all([fetch("world.json").then((r) => r.json()), fetch("photos.json").then((r) => r.json())]).then(([w, ps]) => {
+        world = w.map((c) => {
+          const rings = c.rings.map((ring) => ring.map(([lon, lat]) => project(lon, lat)));
+          const path = new Path2D();
+          for (const ring of rings) {
+            ring.forEach(([x, y], i) => path[i ? "lineTo" : "moveTo"](x, y));
+            path.closePath();
+            longest = Math.max(longest, ring.reduce((s, q, i) => s + (i ? Math.hypot(q[0] - ring[i - 1][0], q[1] - ring[i - 1][1]) : 0), 0));
+          }
+          coast.addPath(path);
+          for (const ring of rings) {
+            const t = thin(ring, 0.006);
+            if (t.length < 3) continue;
+            t.forEach(([x, y], i) => coarse[i ? "lineTo" : "moveTo"](x, y));
+            coarse.closePath();
+          }
+          return { ...c, rings, path, bb: bbox(rings.flat()) };
+        });
+        photos = ps.map((ph) => ({
+          ...ph,
+          tilt: (Math.random() - 0.5) * 6,
+          text: [ph.caption, ...ph.tags, ph.place, ph.country, ph.date, month(ph.date)].join(" ").toLowerCase(),
+        }));
+
+        // places: photos grouped by town; each country takes the next ink in order of first visit
+        const inks = new Map();
+        for (const ph of photos) {
+          if (!inks.has(ph.country)) inks.set(ph.country, INKS[inks.size % INKS.length]);
+          const key = ph.place + "|" + ph.country;
+          let p = places.find((p) => p.id === key);
+          if (!p) places.push((p = { id: key, name: ph.place, country: ph.country, ink: inks.get(ph.country), photos: [], tilt: (Math.random() - 0.5) * 8 }));
+          p.photos.push(ph);
+          // colour in the shape the photo falls inside (a state, in the US), else one named like its
+          // country, else the nearest outline (coastal shots can land just off the simplified coast)
+          const [x, y] = project(ph.lon, ph.lat);
+          const near = (c) => Math.min(...c.rings.flat().map(([a, b]) => (a - x) ** 2 + (b - y) ** 2));
+          const c =
+            world.find((c) => c.rings.some((r) => inRing(r, x, y))) ||
+            world.find((c) => c.name === ph.country) ||
+            world.reduce((best, c) => (near(c) < near(best) ? c : best));
+          c.ink ||= inks.get(ph.country);
+        }
+        for (const p of places) {
+          [p.wx, p.wy] = project(p.photos.reduce((s, ph) => s + ph.lon, 0) / p.photos.length, p.photos.reduce((s, ph) => s + ph.lat, 0) / p.photos.length);
+        }
+        if (photos.length) $("total").textContent = `${photos.length} photos · ${places.length} places · ${inks.size} countries`;
+        $("q").hidden = !photos.length;
+
+        for (const c of new Set(inks.values())) hatchTile(c);
+        size();
+        view = fit();
+        intro = REDUCED ? 0 : performance.now();
+        showPlaces();
+        new ResizeObserver(() => {
+          if (ink.width === Math.round(map.clientWidth * DPR) && ink.height === Math.round(map.clientHeight * DPR)) return;
+          const { cx, cy, z } = size();
+          if (!ink.width) return;
+          const k = kFit * z;
+          setView(k, ink.width / 2 - cx * k, ink.height / 2 - cy * k);
+        }).observe(map);
+      });
+    </script>
+  </body>
+</html>

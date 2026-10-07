@@ -1,2 +1,7 @@
 .DS_Store
 _site
+# places: source photos stay local, only the built webp + photos.json ship
+places/raw/*
+!places/raw/overrides.json
+places/.cache/
+__pycache__/
