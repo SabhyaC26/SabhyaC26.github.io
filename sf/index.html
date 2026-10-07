@@ -1,0 +1,1732 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ride through San Francisco</title>
+    <meta name="description" content="A posca-marker bike ride through San Francisco's neighbourhoods." />
+    <style>
+      html {
+        background: #0c0c0c;
+        color: #8a8780;
+        font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        max-width: 1400px;
+        aspect-ratio: 1400 / 640;
+        margin: 0 auto;
+      }
+      canvas {
+        touch-action: pan-y;
+        cursor: grab;
+        user-select: none;
+      }
+      p {
+        text-align: center;
+      }
+      .back {
+        display: block;
+        max-width: 1400px;
+        margin: 0 auto 12px;
+        color: #8a8780;
+        text-decoration: none;
+      }
+      .back:hover {
+        color: #ece9e2;
+      }
+      kbd {
+        font: inherit;
+        color: #ece9e2;
+      }
+      #sound {
+        font: inherit;
+        color: #ece9e2;
+        background: none;
+        border: 1px solid #3b3836;
+        border-radius: 99px;
+        padding: 2px 10px;
+        margin-left: 6px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <a class="back" href="/">← back home</a>
+    <canvas id="scene"></canvas>
+    <p>ride through san francisco · scroll, drag or <kbd>←</kbd> <kbd>→</kbd> to ride · <kbd>space</kbd> to stop · tap the bike or a landmark <button id="sound" type="button" aria-pressed="false">sound off</button></p>
+    <script>
+      // A posca-marker ride through SF. The whole city is authored in one continuous world and every
+      // stroke renders deterministically, so tiles of it can be painted (and repainted) independently
+      // and still meet without seams. A slower far layer gives depth; moving parts animate at ~10fps.
+      const GLYPHS = {"&":[728.0,"M 387 592 L 375 542 L 365 507 L 378 491 L 346 536 L 306 548 L 271 539 L 239 520 L 233 479 L 239 450 L 265 422 L 315 413 L 287 425 L 208 394 L 142 340 L 123 287 L 113 183 L 151 94.5 L 220 44.1 L 293 25.2 L 375 28.4 L 447 59.9 L 498 123 L 507 173 L 488 224 L 438 290 M 274 211 L 287 249 L 324 274 L 384 290 L 469 302 L 539 318 L 630 343 L 693 384 L 724 435 L 712 482 L 690 504 L 655 517 L 611 504"],"'":[164.0,"M 117 709 L 117 495"],"-":[413.0,"M 132 227 L 139 227 L 230 246 L 293 239 L 356 255"],".":[202.0,"M 126 66.1 L 120 18.9 L 164 18.9 L 170 63 L 126 66.1"],"0":[394.0,"M 236 224 L 284 224 L 343 261 L 381 343 L 381 397 L 328 472 L 261 510 L 192 510 L 148 469 L 129 416 L 126 346 L 148 284 L 173 246 L 239 220"],"1":[359.0,"M 280 34.6 L 290 586 L 299 542 L 239 501 L 186 466 L 132 447 L 72.5 444"],"2":[422.0,"M 192 498 L 208 463 L 189 419 L 148 403 L 113 419 L 97.6 476 L 101 554 L 158 639 L 230 665 L 296 643 L 337 576 L 343 504 L 331 406 L 290 274 L 236 164 L 189 85.1 L 158 28.4 L 425 56.7"],"3":[406.0,"M 224 158 L 208 198 L 145 195 L 107 173 L 91.4 113 L 104 59.9 L 151 15.8 L 217 9.45 L 296 59.9 L 334 139 L 340 224 L 318 318 L 284 369 L 236 397 L 192 394 L 173 384 L 151 359 L 214 419 L 318 542 L 387 617 L 271 614 L 173 621"],"4":[413.0,"M 406 132 L 85 69.3 L 224 416 L 287 627 M 312 463 L 312 161 L 315 6.3 L 312 -97.6"],"5":[387.0,"M 198 94.5 L 189 120 L 158 120 L 123 94.5 L 123 34.6 L 158 -15.8 L 233 -18.9 L 315 34.6 L 346 107 L 356 176 L 324 239 L 274 306 L 236 315 L 189 296 L 158 271 L 135 239 L 126 205 L 135 406 L 139 454 L 129 576 L 220 564 L 328 576"],"6":[457.0,"M 208 18.9 L 217 104 L 261 170 L 315 186 L 375 135 L 391 69.3 L 365 15.8 L 324 -12.6 L 252 -12.6 L 189 44.1 L 135 148 L 126 280 L 161 406 L 233 495 L 299 548 L 356 554 L 410 539 L 463 504"],"7":[413.0,"M 148 -34.6 L 315 419 L 362 517 L 394 554 L 419 573 L 284 561 L 158 551 L 85 567 M 176 359 L 391 321"],"8":[441.0,"M 249 15.8 L 346 47.2 L 378 78.8 L 387 107 L 416 126 L 416 167 L 435 214 L 406 315 L 359 384 L 324 422 L 284 425 L 230 425 L 202 466 L 202 532 L 249 586 L 302 586 L 356 561 L 384 517 L 387 460 L 362 432 L 321 416 L 227 416 L 176 378 L 132 306 L 123 236 L 126 158 L 145 97.7 L 180 44.1 L 249 15.8"],"9":[438.0,"M 113 101 L 120 101 L 139 50.4 L 198 25.2 L 284 56.7 L 356 129 L 391 246 L 381 397 L 315 517 L 284 554 L 243 570 L 183 551 L 148 504 L 129 450 L 142 384 L 176 346 L 227 337 L 280 359 L 315 394 L 343 469"],"A":[595.0,"M 41 -88.2 L 120 -85 L 183 -101 L 117 -85 L 265 517 L 321 658 L 328 684 L 428 387 L 523 123 L 539 56.7 L 151 56.7 L 536 59.9 L 586 -104 L 510 -120 L 649 -97.6"],"B":[491.0,"M 142 -31.5 L 284 22.1 L 384 91.4 L 410 145 L 403 198 L 369 249 L 337 280 L 290 293 L 189 274 L 293 296 L 400 365 L 454 447 L 469 532 L 460 617 L 428 684 L 356 743 L 274 772 L 173 765 L 37.8 756 L 151 756 L 198 -18.9"],"C":[699.0,"M 696 142 L 633 69.3 L 545 18.9 L 457 9.45 L 353 22.1 L 246 81.9 L 180 161 L 126 280 L 123 410 L 176 564 L 265 671 L 365 712 L 466 731 L 564 718 L 668 652 L 680 715 L 662 652 L 671 586"],"D":[617.0,"M 53.5 775 L 170 781 L 324 765 L 444 715 L 526 617 L 567 510 L 583 400 L 551 293 L 472 192 L 378 126 L 287 78.8 L 154 56.7 L 246 66.1 L 205 630 L 192 778"],"E":[507.0,"M 498 40.9 L 495 -50.4 L 498 -12.6 L 161 -18.9 L 107 -31.5 L 173 -18.9 L 167 211 L 271 217 L 381 211 L 400 268 L 387 170 L 381 208 L 243 220 L 167 217 L 173 479 L 164 709 L 107 715 L 180 702 L 340 702 L 501 702 L 498 639 L 507 775"],"F":[495.0,"M 170 -47.2 L 246 -25.2 L 271 -25.2 L 233 -22.1 L 217 192 L 425 211 L 432 158 L 425 239 L 425 211 L 217 192 L 176 680 L 176 662 L 63 665 L 296 668 L 479 671 L 479 724 L 482 598 L 488 576"],"G":[532.0,"M 479 740 L 472 646 L 476 674 L 491 668 L 457 684 L 413 715 L 328 724 L 255 693 L 183 614 L 139 482 L 135 350 L 142 217 L 202 126 L 280 91.4 L 384 120 L 444 186 L 476 280 L 482 457 L 526 450 L 365 457"],"H":[605.0,"M 129 -22.1 L 214 9.45 L 176 -6.3 L 164 258 L 123 693 L 75.6 684 L 123 690 L 161 702 M 536 -47.2 L 510 -53.5 L 425 -63 L 472 -56.7 L 517 441 L 532 595 L 561 728 L 605 728 L 513 734 M 495 202 L 170 208"],"I":[290.0,"M 139 -9.45 L 230 18.9 L 299 22.1 L 227 25.2 L 180 340 L 164 655 L 217 665 L 243 658 L 211 665 L 72.5 636"],"J":[425.0,"M 139 25.2 L 97.6 37.8 L 44.1 3.15 L 25.2 -56.7 L 69.3 -135 L 158 -154 L 258 -129 L 334 -56.7 L 372 37.8 L 372 142 L 340 328 L 271 687 L 192 662 L 365 709"],"K":[665.0,"M 139 -78.8 L 243 -50.4 L 198 -63 L 183 296 L 167 416 L 158 690 L 217 699 L 75.6 680 M 649 662 L 529 674 L 586 665 L 466 532 L 346 384 L 239 284 L 195 271 L 274 296 L 350 299 L 403 271 L 444 208 L 485 139 L 564 25.2 L 624 -18.9 L 684 -6.3 L 721 34.6 L 728 59.9 L 709 107 L 680 132 L 652 113"],"L":[410.0,"M 416 40.9 L 394 -81.9 L 403 -31.5 L 274 -18.9 L 148 -18.9 L 81.9 -31.5 L 151 -18.9 L 151 419 L 148 573 L 154 743 L 110 743 L 202 747"],"M":[920.0,"M 41 12.6 L 192 28.4 L 145 25.2 L 205 551 L 224 803 L 413 198 L 583 432 L 671 567 L 728 677 L 778 781 L 784 822 L 769 677 L 794 466 L 816 258 L 841 25.2 L 954 47.2 L 759 9.45"],"N":[564.0,"M 88.2 -37.8 L 246 -12.6 L 176 -18.9 L 167 315 L 154 428 L 154 677 L 302 387 L 482 107 L 491 447 L 504 617 L 532 750 L 598 743 L 469 756"],"O":[649.0,"M 441 674 L 391 696 L 252 652 L 164 551 L 123 406 L 132 265 L 195 158 L 312 101 L 432 107 L 551 195 L 595 265 L 627 350 L 624 450 L 589 564 L 548 633 L 498 671 L 444 674"],"P":[469.0,"M 132 -9.45 L 249 6.3 L 189 -3.15 L 202 539 L 189 608 L 176 687 L 139 737 L 53.5 737 L 280 731 L 362 702 L 425 633 L 457 551 L 454 466 L 432 394 L 353 328 L 265 309 L 202 309"],"Q":[665.0,"M 510 53.6 L 595 158 L 602 192 L 624 230 L 633 309 L 605 438 L 580 507 L 510 567 L 472 570 L 413 595 L 255 551 L 167 444 L 135 343 L 126 214 L 161 107 L 214 50.4 L 293 3.15 L 391 -3.15 L 450 15.8 L 504 59.9 L 425 154 L 668 -104 L 737 -117 L 772 -85 L 778 -53.5 L 769 -18.9 L 743 6.3 L 712 9.45 L 709 -9.45"],"R":[630.0,"M 145 -113 L 271 -85 L 211 -101 L 202 274 L 189 450 L 211 690 L 66.1 662 L 284 696 L 419 693 L 482 655 L 529 586 L 536 510 L 523 438 L 466 378 L 391 340 L 324 318 L 205 312 L 372 318 L 419 287 L 463 205 L 507 81.9 L 545 -47.2 L 598 -142 L 658 -170 L 724 -151 L 759 -120 L 759 -72.5 L 747 -34.6 L 709 0 L 680 -12.6 L 671 -34.6"],"S":[425.0,"M 217 123 L 208 170 L 151 195 L 94.5 173 L 72.5 107 L 88.2 50.4 L 132 -9.45 L 205 -37.8 L 296 3.15 L 362 81.9 L 381 151 L 375 214 L 312 337 L 208 498 L 173 580 L 173 665 L 217 731 L 246 753 L 293 759 L 337 737 L 400 677 L 425 718 L 365 602"],"T":[561.0,"M 284 -50.4 L 432 -34.6 L 365 -41 L 331 643 L 551 649 L 554 614 L 551 649 L 567 715 L 551 649 L 88.2 627 L 94.5 702 L 91.4 621 L 81.9 558"],"U":[580.0,"M 69.3 756 L 202 775 L 132 762 L 158 447 L 189 198 L 233 107 L 309 81.9 L 381 101 L 444 145 L 501 258 L 520 362 L 517 740 L 463 743 L 576 750"],"V":[558.0,"M 88.2 668 L 161 684 L 120 677 L 217 406 L 277 154 L 306 34.6 L 343 142 L 369 198 L 425 413 L 457 517 L 495 624 L 551 737 L 491 747 L 548 734 L 624 737"],"W":[791.0,"M 75.6 655 L 158 665 L 217 684 L 139 662 L 189 438 L 205 328 L 249 148 L 255 69.3 L 293 202 L 331 287 L 378 495 L 387 551 L 410 589 L 419 630 L 438 523 L 488 328 L 580 -3.15 L 614 186 L 652 350 L 652 406 L 677 463 L 709 532 L 715 630 L 747 747 L 687 743 L 832 740"],"X":[608.0,"M 59.9 -28.4 L 180 -18.9 L 123 -22.1 L 435 472 L 469 548 L 592 728 L 643 724 L 520 737 M 69.3 712 L 230 740 L 161 728 L 192 586 L 268 413 L 359 224 L 428 78.8 L 447 25.2 L 517 -44.1 L 558 -63 L 617 -56.7 L 649 -28.4 L 655 25.2 L 630 56.7 L 602 53.6"],"Y":[592.0,"M 85 747 L 180 769 L 129 756 L 217 548 L 255 463 L 331 356 L 315 -59.9 L 265 -63 L 220 -69.3 L 315 -59.9 L 387 -63 M 328 359 L 466 561 L 510 643 L 595 788 L 529 803 L 652 772 L 662 765"],"Z":[517.0,"M 72.5 554 L 85 674 L 85 652 L 290 665 L 517 674 L 491 674 L 432 598 L 312 365 L 233 384 L 315 365 L 394 362 L 312 362 L 186 72.4 L 126 -31.5 L 479 12.6 L 482 69.3 L 479 -34.6"],"a":[387.0,"M 126 350 L 110 413 L 139 460 L 202 501 L 284 482 L 328 413 L 340 328 L 343 198 L 328 148 L 265 104 L 198 69.3 L 139 59.9 L 91.4 88.2 L 88.2 158 L 113 202 L 183 220 L 271 220 L 296 214 L 334 173 L 346 132 L 350 69.3 L 350 0 L 353 -25.2 L 387 -31.5 L 406 -31.5 L 428 -31.5 L 454 -18.9"],"b":[472.0,"M 44.1 810 L 195 822 L 123 813 L 158 -9.45 L 249 -37.8 L 343 -18.9 L 422 56.7 L 450 132 L 441 214 L 410 274 L 353 312 L 261 293 L 208 249 L 173 195 L 151 139 L 164 -37.8 L 117 -50.4 L 94.5 -63"],"c":[394.0,"M 340 312 L 365 457 L 356 403 L 299 444 L 243 454 L 170 416 L 126 318 L 113 224 L 139 148 L 205 78.8 L 287 69.3 L 337 94.5 L 356 117"],"d":[454.0,"M 466 -3.15 L 391 -9.45 L 350 -22.1 L 391 -6.3 L 391 239 L 378 346 L 350 381 L 290 387 L 214 365 L 161 309 L 123 224 L 117 139 L 135 75.6 L 183 31.5 L 230 31.5 L 296 81.9 L 334 135 L 365 214 L 384 318 L 406 825 L 290 816"],"e":[346.0,"M 331 44.1 L 293 -9.45 L 224 -31.5 L 151 15.8 L 120 139 L 129 280 L 176 403 L 211 425 L 258 419 L 293 384 L 337 274 L 236 268 L 132 265"],"f":[290.0,"M 110 -211 L 299 -176 L 208 -189 L 180 173 L 173 400 L 274 403 L 302 416 L 249 403 L 110 400 L 97.6 403 L 180 400 L 186 605 L 202 715 L 236 775 L 302 806 L 372 810 L 432 769 L 457 734 L 460 709"],"g":[422.0,"M 274 217 L 328 265 L 359 346 L 372 359 L 447 387 L 362 359 L 315 422 L 255 466 L 217 469 L 135 416 L 104 321 L 126 249 L 170 214 L 214 208 L 249 214 L 287 224 L 299 113 L 299 15.8 L 365 -44.1 L 406 -97.6 L 425 -189 L 422 -249 L 346 -324 L 233 -372 L 120 -362 L 37.8 -306 L -3.15 -220 L 12.6 -104 L 53.5 -31.5 L 97.6 15.8 L 186 44.1 L 239 40.9 L 299 15.8"],"h":[447.0,"M 88.2 -53.5 L 230 -12.6 L 161 -34.6 L 135 491 L 123 828 L 145 835 L 123 822 L 63 822 M 145 315 L 202 387 L 280 425 L 334 413 L 369 365 L 387 271 L 394 189 L 397 -18.9 L 337 -34.6 L 466 -6.3"],"i":[258.0,"M 78.8 50.4 L 81.9 50.4 L 243 69.3 L 167 63 L 180 435 L 110 435 M 132 696 L 132 658 L 173 652 L 173 696 L 132 696"],"j":[265.0,"M 53.5 -220 L 12.6 -217 L -15.8 -258 L -3.15 -318 L 56.7 -356 L 139 -337 L 217 -249 L 230 -154 L 208 211 L 214 435 L 148 413 L 72.5 397 M 167 696 L 139 677 L 180 652 L 227 677 L 167 696"],"k":[460.0,"M 85 -28.4 L 227 0 L 158 -12.6 L 139 536 L 142 891 L 208 907 L 72.5 885 M 469 482 L 372 488 L 406 463 L 334 394 L 161 274 L 261 334 L 359 145 L 419 15.8 L 488 -91.4 L 539 -107 L 592 -85 L 621 -41 L 611 12.6 L 580 31.5 L 558 28.4 L 548 9.45"],"l":[224.0,"M 91.4 -129 L 101 -129 L 227 -78.8 L 161 -107 L 139 457 L 151 759 L 205 775 L 142 750 L 85 750"],"m":[740.0,"M 123 -41 L 183 -18.9 L 261 -6.3 L 180 -18.9 L 176 268 L 154 447 L 198 460 L 78.8 435 L 158 447 L 186 230 L 243 343 L 340 416 L 387 422 L 413 387 L 425 258 L 425 154 L 457 293 L 523 403 L 592 460 L 646 466 L 671 400 L 680 265 L 674 34.6 L 605 9.45 L 759 44.1"],"n":[510.0,"M 91.4 -50.4 L 224 -31.5 L 167 -37.8 L 164 161 L 180 318 L 186 495 L 158 513 L 78.8 507 M 180 299 L 277 410 L 356 450 L 410 413 L 447 353 L 457 280 L 460 110 L 419 101 L 517 120"],"o":[435.0,"M 302 472 L 243 485 L 161 457 L 126 391 L 129 299 L 164 239 L 246 198 L 353 233 L 397 312 L 400 406 L 362 457 L 312 457"],"p":[498.0,"M 132 -350 L 239 -334 L 277 -321 L 220 -334 L 205 -113 L 158 202 L 154 369 L 214 476 L 331 536 L 428 501 L 466 400 L 450 293 L 403 217 L 312 186 L 243 205 L 180 261 L 154 356 L 142 504 L 142 605 L 183 621 L 75.6 586"],"q":[482.0,"M 450 576 L 416 362 L 372 293 L 312 246 L 230 233 L 158 274 L 123 343 L 129 444 L 208 507 L 287 517 L 365 466 L 403 419 L 406 302 L 403 129 L 365 -268 L 387 -192 L 466 -117 L 501 -50.4"],"r":[413.0,"M 123 -25.2 L 195 -3.15 L 252 12.6 L 176 -9.45 L 158 176 L 158 340 L 145 491 L 78.8 479 L 145 488 L 170 321 L 224 422 L 309 491 L 369 507 L 400 479 L 419 444 L 410 400 L 391 381 L 362 381"],"s":[340.0,"M 129 -25.2 L 104 9.45 L 69.3 9.45 L 41 -31.5 L 56.7 -104 L 97.6 -148 L 173 -158 L 243 -120 L 284 -63 L 290 37.8 L 239 176 L 167 331 L 148 450 L 192 536 L 258 554 L 306 539 L 331 507 L 362 542 L 296 438"],"t":[350.0,"M 296 81.9 L 331 113 L 369 94.5 L 375 50.4 L 356 -3.15 L 290 -34.6 L 233 -25.2 L 183 37.8 L 176 164 L 164 463 L 88.2 450 L 258 472 L 164 463 L 158 655"],"u":[507.0,"M 81.9 513 L 186 513 L 151 504 L 139 296 L 139 173 L 167 117 L 195 81.9 L 217 78.8 L 258 132 L 296 176 L 306 230 L 378 340 L 416 416 L 428 491 L 432 214 L 444 40.9 L 400 25.2 L 447 40.9 L 520 50.4"],"v":[485.0,"M 63 501 L 142 526 L 117 513 L 271 50.4 L 369 239 L 406 359 L 466 510 L 410 507 L 536 507"],"w":[677.0,"M 44.1 507 L 120 520 L 167 539 L 107 517 L 205 167 L 217 50.4 L 246 161 L 265 255 L 331 413 L 343 447 L 359 362 L 428 148 L 457 50.4 L 472 15.8 L 498 25.2 L 536 158 L 589 318 L 608 369 L 627 472 L 583 498 L 630 472 L 693 479 L 715 491"],"x":[498.0,"M 59.9 450 L 63 457 L 158 472 L 120 463 L 299 132 L 406 -22.1 L 460 -78.8 L 507 -88.2 L 539 -69.3 L 548 -44.1 L 554 -15.8 L 536 22.1 L 507 12.6 M 44.1 -94.5 L 53.5 -94.5 L 167 -88.2 L 110 -88.2 L 271 189 L 460 507 L 406 526 L 513 495"],"y":[457.0,"M 56.7 -198 L 28.4 -164 L -28.4 -164 L -63 -214 L -72.4 -280 L -25.2 -337 L 53.5 -337 L 158 -287 L 249 -129 L 337 85.1 L 391 265 L 450 400 M 318 47.2 L 117 381 L 151 387 L 53.5 372"],"z":[425.0,"M 101 359 L 101 466 L 104 428 L 394 472 L 318 340 L 243 180 L 170 189 L 243 180 L 337 189 L 243 176 L 123 -53.5 L 406 -72.5 L 422 -9.45 L 403 -75.6 L 410 -142"]};
+      const DPR = Math.min(devicePixelRatio || 1, 2);
+      const W = 1400, H = 640, COVER = 0.92, PARALLAX = 1 / 3;
+      const params = new URLSearchParams(location.search);
+      const C = {
+        white: "#f6f3ec", cream: "#f3e3b5", yellow: "#ffd21f", orange: "#ff7a1c", bridge: "#e8462a",
+        red: "#d8282f", pink: "#ff8fb8", lilac: "#b39dff", mint: "#8fe0c0", sky: "#6ec6f0",
+        blue: "#2a5ea8", navy: "#1f3a66", slate: "#4a5a78", steel: "#8ea7c4", green: "#3f8f5a",
+        forest: "#24563d", fog: "#c9d3dc", grey: "#a9a59d", dark: "#3b3836", brick: "#b5523b",
+        jade: "#2f9e7a", sand: "#e8d3a0", rock: "#6b665f", brown: "#8a5a3c", bark: "#5e3d28",
+        seal: "#8a6a4e", silver: "#d9d6cf", purple: "#7b4fc9", teal: "#1f8f99", far: "#1d2a3c",
+        farCity: "#27364d", violet: "#9b5de5",
+      };
+      const RAINBOW = [C.red, C.orange, C.yellow, C.green, C.blue, C.violet];
+
+      function rng(seed) {
+        return () => {
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      let R = rng(7);
+      const rand = (a, b) => a + R() * (b - a);
+      const pick = (xs) => xs[Math.floor(R() * xs.length)];
+      function noise(r = R) {
+        const v = Array.from({ length: 256 }, r);
+        return (t) => {
+          const i = Math.floor(t), f = t - i, u = f * f * (3 - 2 * f);
+          return v[i & 255] * (1 - u) + v[(i + 1) & 255] * u;
+        };
+      }
+      const hash = (n) => (((Math.sin(n * 12.9898 + 78.233) * 43758.5453) % 1) + 1) % 1;
+      const mod = (a, n) => ((a % n) + n) % n;
+      const smooth = (a, b, x) => {
+        const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+        return t * t * (3 - 2 * t);
+      };
+      const TAU = Math.PI * 2;
+
+      function layer(w, h) {
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        return c;
+      }
+      const grain = (() => {
+        const c = layer(128, 128), g = c.getContext("2d"), img = g.createImageData(128, 128), r = rng(3);
+        for (let i = 3; i < img.data.length; i += 4) img.data[i] = r() < 0.025 ? 30 + r() * 80 : 0;
+        g.putImageData(img, 0, 0);
+        return c;
+      })();
+
+      // ---- the brush. paint() renders one stroke, deterministically from its seed, into scratch
+      // layers sized to its box, then lays it onto a target canvas whose left edge sits at `ox`. ----
+      const SCR_W = Math.ceil(W * 1.5 * DPR), SCR_H = H * DPR;
+      const sp = layer(SCR_W, SCR_H), ss = layer(SCR_W, SCR_H), so = layer(SCR_W, SCR_H);
+      const P = sp.getContext("2d"), S = ss.getContext("2d"), O = so.getContext("2d");
+      const tooth = O.createPattern(grain, "repeat");
+
+      function paint(st, target, ox) {
+        const r = rng(st.seed), [bx, by, bx1, by1] = st.box, bw = Math.min(SCR_W, bx1 - bx), bh = Math.min(SCR_H, by1 - by);
+        if (bw <= 0 || bh <= 0) return;
+        P.clearRect(0, 0, bw, bh);
+        S.clearRect(0, 0, bw, bh);
+        P.save();
+        S.save();
+        if (st.clip) {
+          const c = new Path2D();
+          c.addPath(st.clip, new DOMMatrix([1, 0, 0, 1, -bx, -by]));
+          P.clip(c);
+          S.clip(c);
+        }
+        P.fillStyle = st.color;
+        const rr = st.r, wob = noise(r), pts = st.pts;
+        const fibres = Array.from({ length: 9 }, () => ({ off: (r() * 2 - 1) * 0.9, n: noise(r) }));
+        const dot = Math.max(0.55 * DPR, rr * 0.06);
+        let dist = 0;
+        for (let i = 0; i < pts.length; i++) {
+          const q = pts[i], a = pts[Math.max(0, i - 1)], c = pts[Math.min(pts.length - 1, i + 1)];
+          const dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+          const a2 = pts[Math.max(0, i - 6)], c2 = pts[Math.min(pts.length - 1, i + 6)];
+          const t1 = Math.atan2(q.y - a2.y, q.x - a2.x), t2 = Math.atan2(c2.y - q.y, c2.x - q.x);
+          const speed = 1 / (1 + 2.5 * Math.abs(Math.atan2(Math.sin(t2 - t1), Math.cos(t2 - t1))));
+          const step = i ? Math.hypot(q.x - pts[i - 1].x, q.y - pts[i - 1].y) : 0;
+          dist += step;
+          const fresh = Math.exp(-dist / (rr * 1.4)), x = q.x - bx, y = q.y - by;
+          const rad = rr * (1 + 0.16 * fresh + 0.07 * (wob(dist / (rr * 2)) - 0.5)) + (r() - 0.5) * 0.08 * rr;
+          P.beginPath();
+          P.arc(x, y, rad, 0, 7);
+          P.fill();
+          const dry = (0.25 + 0.75 * speed) * (1 - fresh);
+          for (const f of fibres) {
+            const k = Math.max(0, f.n(dist / (rr * 2.5)) - 0.62) * dry;
+            if (!k) continue;
+            S.fillStyle = `rgb(0 0 0 / ${Math.min(1, (k * 0.4 * step) / dot)})`;
+            S.beginPath();
+            S.arc(x + nx * f.off * rad, y + ny * f.off * rad, dot, 0, 7);
+            S.fill();
+          }
+        }
+        P.restore();
+        S.restore();
+        O.clearRect(0, 0, bw, bh);
+        O.globalCompositeOperation = "source-over";
+        O.drawImage(sp, 0, 0, bw, bh, 0, 0, bw, bh);
+        O.globalCompositeOperation = "destination-out";
+        O.drawImage(ss, 0, 0, bw, bh, 0, 0, bw, bh);
+        tooth.setTransform(new DOMMatrix([1, 0, 0, 1, -bx, -by]));
+        O.fillStyle = tooth;
+        O.fillRect(0, 0, bw, bh);
+        O.globalCompositeOperation = "source-over";
+        target.globalAlpha = COVER;
+        target.drawImage(so, 0, 0, bw, bh, bx - ox, by, bw, bh);
+        target.globalAlpha = 1;
+      }
+
+      // ---- drawing vocabulary. Authoring is in CSS px; OFF shifts it (into the world, or into a sprite). ----
+      let out = [], grp = 0, OFF = [0, 0], seq = 0;
+      const shake = noise(rng(11));
+      let shakeT = 0;
+      const group = () => grp++;
+      function push(st) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const q of st.pts) (x0 = Math.min(x0, q.x)), (y0 = Math.min(y0, q.y)), (x1 = Math.max(x1, q.x)), (y1 = Math.max(y1, q.y));
+        const pad = st.r * 1.4 + 2;
+        st.box = [Math.floor(x0 - pad), Math.max(0, Math.floor(y0 - pad)), Math.ceil(x1 + pad), Math.min(H * DPR, Math.ceil(y1 + pad))];
+        Object.assign(st, { group: grp, seq: seq++, seed: (seq * 2654435761) >>> 0 });
+        out.push(st);
+      }
+
+      // A hand-pulled line through the vertices: resampled, with a slow wobble across the line.
+      function trace(vs, step = 1) {
+        const pts = [];
+        for (let i = 0; i < vs.length - 1; i++) {
+          const [x0, y0] = vs[i], [x1, y1] = vs[i + 1];
+          const len = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(len / step));
+          const nx = -(y1 - y0) / (len || 1), ny = (x1 - x0) / (len || 1);
+          for (let j = i ? 1 : 0; j <= n; j++) {
+            const t = j / n, o = (shake((shakeT += step) / 40) - 0.5) * 1.6;
+            pts.push({ x: (x0 + (x1 - x0) * t + nx * o + OFF[0]) * DPR, y: (y0 + (y1 - y0) * t + ny * o + OFF[1]) * DPR });
+          }
+        }
+        return pts;
+      }
+      function line(vs, color, r = 2) {
+        push({ pts: trace(vs, Math.max(0.6, r * 0.3)), color, r: r * DPR, kind: 2 });
+      }
+      // Straight edge with a little overshoot at both ends, the way a quick marker line runs past a corner.
+      function edge(x0, y0, x1, y1, color, r = 1.6) {
+        const len = Math.hypot(x1 - x0, y1 - y0) || 1, ox = ((x1 - x0) / len) * 2.5, oy = ((y1 - y0) / len) * 2.5;
+        line([[x0 - ox, y0 - oy], [x1 + ox, y1 + oy]], color, r);
+      }
+      function outline(poly, color, r = 1.6) {
+        poly.forEach((a, i) => {
+          const b = poly[(i + 1) % poly.length];
+          edge(a[0], a[1], b[0], b[1], color, r);
+        });
+      }
+      function inside(poly, x, y) {
+        let hit = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const [xi, yi] = poly[i], [xj, yj] = poly[j];
+          if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+        }
+        return hit;
+      }
+      function nearEdge(poly, x, y, reach) {
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const [ax, ay] = poly[j], [bx, by] = poly[i], dx = bx - ax, dy = by - ay;
+          const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+          if ((ax + dx * t - x) ** 2 + (ay + dy * t - y) ** 2 < reach) return true;
+        }
+        return false;
+      }
+      // Colour a polygon in with back-and-forth scribbles, clipped to the shape. Long flat fills (water,
+      // sidewalk) pass angle 0 so their scribble lines up across the whole city.
+      function fill(poly, color, r = 5, angle) {
+        const shifted = poly.map(([x, y]) => [x + OFF[0], y + OFF[1]]);
+        const clip = new Path2D();
+        shifted.forEach(([x, y], i) => (i ? clip.lineTo(x * DPR, y * DPR) : clip.moveTo(x * DPR, y * DPR)));
+        clip.closePath();
+        const xs = poly.map((p) => p[0]), ys = poly.map((p) => p[1]);
+        const x0 = Math.min(...xs) - r, x1 = Math.max(...xs) + r, y0 = Math.min(...ys) - r, y1 = Math.max(...ys) + r;
+        const a = angle ?? rand(-0.35, 0.35), cos = Math.cos(a), sin = Math.sin(a);
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, bw = x1 - x0, bh = y1 - y0;
+        const halfU = (Math.abs(bw * cos) + Math.abs(bh * sin)) / 2, halfV = (Math.abs(bw * sin) + Math.abs(bh * cos)) / 2;
+        const gap = r * 1.5, vs = [];
+        for (let v = -halfV, k = 0; v <= halfV; v += gap, k++) {
+          const u = k % 2 ? halfU : -halfU;
+          vs.push([cx + u * cos - v * sin, cy + u * sin + v * cos], [cx - u * cos - v * sin, cy - u * sin + v * cos]);
+        }
+        const dev = shifted.map(([x, y]) => [x * DPR, y * DPR]), reach = (r * DPR) ** 2;
+        const pts = trace(vs, Math.max(0.8, r * 0.3)).filter((q) => inside(dev, q.x, q.y) || nearEdge(dev, q.x, q.y, reach));
+        if (pts.length > 1) push({ pts, color, r: r * DPR, clip, kind: 1 });
+      }
+      const rect = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+      function block(x, y, w, h, color, trim) {
+        fill(rect(x, y, w, h), color, Math.min(5, Math.min(w, h) / 3));
+        if (trim) outline(rect(x, y, w, h), trim);
+      }
+      function dot(x, y, color, r = 1.5) {
+        line([[x, y], [x + 0.6, y + 0.3]], color, r);
+      }
+      function circle(cx, cy, rad, color, r = 1.6, from = 0, to = Math.PI * 2.08) {
+        const vs = [];
+        for (let t = from; t <= to; t += 0.08) vs.push([cx + Math.cos(t) * rad, cy + Math.sin(t) * rad]);
+        line(vs, color, r);
+      }
+      function disc(cx, cy, rad, color) {
+        const poly = [];
+        for (let t = 0; t < TAU; t += 0.15) poly.push([cx + Math.cos(t) * rad, cy + Math.sin(t) * rad]);
+        fill(poly, color, Math.min(5, rad / 2));
+      }
+      const glyphSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const glyphPath = document.createElementNS(glyphSvg.namespaceURI, "path");
+      glyphSvg.style.cssText = "position:absolute;width:0;height:0";
+      glyphSvg.append(glyphPath);
+      document.body.append(glyphSvg);
+      function letters(text, x, y, size, color, r = 2.2) {
+        const k = size / 1000;
+        for (const ch of text) {
+          if (!GLYPHS[ch]) {
+            x += 300 * k;
+            continue;
+          }
+          const [adv, d] = GLYPHS[ch];
+          for (const sub of d.split(/(?=M)/)) {
+            glyphPath.setAttribute("d", sub);
+            const len = glyphPath.getTotalLength(), vs = [];
+            for (let l = 0; l <= len; l += 4) {
+              const q = glyphPath.getPointAtLength(l);
+              vs.push([x + q.x * k, y - q.y * k]);
+            }
+            line(vs, color, r);
+          }
+          x += adv * k;
+        }
+      }
+      // Letters stacked one per line, for vertical signs.
+      function stacked(text, x, y, size, color, r) {
+        [...text].forEach((ch, i) => letters(ch, x, y + i * size * 0.95, size, color, r));
+      }
+
+      // ---- scenery helpers ----
+      function cloud(x, y, w, h) {
+        const top = [], n = Math.max(3, Math.round(w / 34));
+        for (let t = 0; t <= Math.PI; t += 0.12) {
+          const u = t / Math.PI;
+          top.push([x + u * w, y - Math.abs(Math.sin(u * Math.PI * n)) * h * 0.45 - Math.sin(u * Math.PI) * h * 0.55]);
+        }
+        fill([...top, [x + w, y + 4], [x, y + 4]], C.fog, 4);
+        line(top, C.white, 1.8);
+      }
+      function palm(px, base, height, lean) {
+        const top = [px + 12 * lean, base - height];
+        line([[px, base], [px + 4 * lean, base - height * 0.33], [px + 9 * lean, base - height * 0.66], top], C.brown, 3.4);
+        for (let k = 1; k < 9; k++) {
+          const ty = base - (height * k) / 9, tx = px + (k / 9) * 12 * lean;
+          edge(tx - 3, ty, tx + 3, ty - 2, C.bark, 0.9);
+        }
+        for (const [dx, dy] of [[-44, 14], [-36, -10], [-12, -24], [14, -22], [38, -8], [46, 16], [6, 26]]) {
+          const [tx, ty] = top;
+          line([[tx, ty], [tx + dx * 0.55, ty + dy * 0.4 - 8], [tx + dx, ty + dy]], C.green, 2.6);
+        }
+      }
+      function tree(x, base, s, col = C.green) {
+        line([[x, base], [x + 1, base - s * 0.9]], C.bark, Math.max(2, s * 0.08));
+        disc(x, base - s * 1.05, s * 0.48, C.forest);
+        disc(x - s * 0.34, base - s * 0.95, s * 0.36, col);
+        disc(x + s * 0.36, base - s * 1.0, s * 0.38, col);
+        disc(x + 0.05 * s, base - s * 1.32, s * 0.36, col);
+      }
+      function cypress(x, base, s) {
+        line([[x, base], [x - s * 0.1, base - s * 0.5], [x + s * 0.05, base - s * 0.85]], C.bark, Math.max(2.4, s * 0.08));
+        const crown = [[x - s, base - s * 0.85], [x - s * 0.7, base - s * 1.2], [x - s * 0.1, base - s * 1.32], [x + s * 0.6, base - s * 1.28], [x + s * 1.05, base - s * 1.05], [x + s * 0.85, base - s * 0.8]];
+        fill(crown, C.forest, 5);
+        line(crown.slice(0, 5), C.green, 1.6);
+      }
+      let windowList = [];
+      function lit(x, y, w, h) {
+        windowList.push([x + OFF[0], y + OFF[1], w, h]);
+        block(x, y, w, h, C.yellow, C.white);
+      }
+      function sitter(x, y, color = C.white) {
+        circle(x, y - 22, 5, color, 1.6);
+        line([[x, y - 16], [x - 2, y - 4]], color, 2);
+        line([[x - 2, y - 4], [x + 8, y - 3], [x + 10, y + 4]], color, 1.8);
+        line([[x, y - 12], [x + 7, y - 7]], color, 1.6);
+      }
+      function stander(x, base, color = C.white) {
+        circle(x, base - 40, 5, color, 1.6);
+        line([[x, base - 34], [x, base - 16]], color, 2);
+        line([[x, base - 16], [x - 5, base]], color, 1.8);
+        line([[x, base - 16], [x + 5, base]], color, 1.8);
+        line([[x, base - 30], [x - 7, base - 20]], color, 1.6);
+        line([[x, base - 30], [x + 7, base - 20]], color, 1.6);
+      }
+      function water(x0, x1, y0, y1, waves = 40) {
+        fill(rect(x0, y0, x1 - x0, y1 - y0), C.navy, 6, 0);
+        for (let i = 0; i < waves; i++) {
+          const x = rand(x0, x1 - 30), y = rand(y0 + 12, y1 - 10), w = rand(10, 30);
+          line([[x, y], [x + w / 2, y - 1.5], [x + w, y]], C.blue, 1.4);
+        }
+      }
+      // A tapered cluster of city buildings: heights swell in the middle and settle at the ends, so it
+      // grows out of and back into whatever is next to it.
+      function midCity(x0, x1, base, maxH, cols) {
+        for (let x = x0; x < x1 - 20; ) {
+          const w = rand(34, 66), u = (x + w / 2 - x0) / (x1 - x0), h = maxH * (0.3 + 0.7 * Math.sin(Math.PI * Math.min(1, u))) * rand(0.65, 1);
+          block(x, base - h, w, h, pick(cols));
+          for (let wy = base - h + 12; wy < base - 8; wy += 14) for (let wx = x + 8; wx < x + w - 6; wx += 12) if (R() < 0.38) edge(wx, wy, wx + 4, wy, C.yellow, 1.3);
+          x += w + rand(2, 10);
+        }
+      }
+      function victorian(x, w, top, col, { trim = C.white, door = C.red, gable = true } = {}) {
+        const base = 560, h = base - top, peak = top - w * 0.38;
+        if (gable) {
+          fill([[x, base], [x, top], [x + w / 2, peak], [x + w, top], [x + w, base]], col, 5);
+          outline([[x - 4, top + 2], [x + w / 2, peak - 4], [x + w + 4, top + 2]], trim, 2.2);
+          circle(x + w / 2, top - (top - peak) * 0.38, w * 0.07, trim, 1.5);
+        } else {
+          block(x, top, w, h, col);
+          edge(x - 4, top, x + w + 4, top, trim, 2.4);
+          edge(x, top + 9, x + w, top + 9, trim, 1.2);
+        }
+        const mid = top + h * 0.5;
+        edge(x, mid, x + w, mid, trim, 1.5);
+        const ph = h * 0.3, bw = w * 0.42, pw = bw / 3 - 5;
+        for (let k = 0; k < 3; k++) lit(x + w * 0.1 + 3 + k * (pw + 5), top + h * 0.1, pw, ph);
+        outline(rect(x + w * 0.1 - 2, top + h * 0.07, bw + 4, ph + h * 0.06), trim, 1.4);
+        lit(x + w * 0.62, top + h * 0.12, w * 0.24, ph * 0.9);
+        for (let k = 0; k < 2; k++) block(x + w * 0.1 + k * (pw + 8), mid + h * 0.1, pw + 2, ph * 0.9, k ? C.yellow : C.cream, trim);
+        block(x + w * 0.66, mid + h * 0.12, w * 0.18, base - mid - h * 0.12, door, trim);
+        for (let s = 0; s < 3; s++) edge(x + w * 0.62 - s * 3, base - 2 - s * 5, x + w * 0.88 + s * 3, base - 2 - s * 5, trim, 1.2);
+      }
+      function shopfront(x, w, top, col, { sign, signCol = C.red, ink = C.yellow, awn = [C.red, C.white], trim = C.white } = {}) {
+        block(x, top, w, 560 - top, col);
+        edge(x - 4, top, x + w + 4, top, trim, 2.4);
+        for (let wy = top + 18; wy < 430; wy += 58) for (let wx = x + 14; wx < x + w - 30; wx += 40) lit(wx, wy, 24, 34);
+        if (sign) {
+          block(x + 10, 446, w - 20, 26, signCol, trim);
+          letters(sign, x + 18, 466, 20, ink, 1.4);
+        }
+        for (let ax = x + 6, k = 0; ax < x + w - 6; ax += 14, k++) fill([[ax, 476], [ax + 14, 476], [ax + 17, 492], [ax + 3, 492]], awn[k % 2], 3);
+        block(x + 12, 496, w - 24, 54, C.yellow, trim);
+        for (let k = 1; k < 3; k++) edge(x + 12 + ((w - 24) * k) / 3, 498, x + 12 + ((w - 24) * k) / 3, 548, trim, 1.2);
+      }
+      // Bollard-style lamps at one steady rhythm along the whole sidewalk.
+      function lamps(R0, skip = []) {
+        for (let wx = 175; wx < L; wx += 350) {
+          const x = wx - R0.x0;
+          if (x < 20 || x > 1380 || skip.some(([a, b]) => x > a && x < b)) continue;
+          line([[x, 560], [x, 476]], C.grey, 2);
+          line([[x, 480], [x + 4, 470], [x + 14, 468]], C.grey, 1.6);
+          disc(x + 16, 472, 4.5, C.yellow);
+          circle(x + 16, 472, 9, C.yellow, 0.8, 0.2, Math.PI - 0.2);
+        }
+      }
+      function ground() {
+        fill(rect(0, 560, 1400, 26), C.grey, 5, 0);
+        for (let x = 35; x < 1400; x += 70) edge(x, 562, x - 4, 584, C.dark, 0.9);
+        for (let x = 10; x < 1400; x += 70) edge(x, 614, x + 34, 614, C.yellow, 2);
+        line([[0, 598], [1400, 598]], C.dark, 1.2);
+        line([[0, 632], [1400, 632]], C.dark, 1.2);
+      }
+
+      // ---- sprites and actors: the parts that move ----
+      function sprite(w, h, ox, oy, author) {
+        const keep = [out, grp, OFF, R];
+        out = [];
+        grp = 0;
+        OFF = [-ox, -oy];
+        R = rng(Math.floor(ox * 31 + oy * 17 + w));
+        author();
+        const list = out;
+        [out, grp, OFF, R] = keep;
+        const c = layer(Math.ceil(w * DPR), Math.ceil(h * DPR)), g = c.getContext("2d");
+        for (const st of list) paint(st, g, 0);
+        return c;
+      }
+      // An actor cycles through frames at `fps`; frames are authoring functions living in the box
+      // (ox, oy, w, h) of local coords, and pos(t) is where that box sits.
+      function actor(owner, spec) {
+        owner.actors.push({ fps: 10, cache: [], shift: 0, ...spec });
+      }
+      const frameOf = (a, t) => {
+        const k = mod(Math.floor(t * a.fps + a.shift), a.frames.length);
+        return (a.cache[k] ||= sprite(a.w, a.h, a.ox, a.oy, a.frames[k]));
+      };
+      const range = (n, f) => Array.from({ length: n }, (_, k) => () => f(k));
+      const still = (x, y) => () => ({ x, y });
+      const swaying = (n, f) => range(n, (k) => f(Math.sin((k / n) * TAU)));
+
+      // ---- the neighbourhoods, in riding order. Each is 1400px; the route loops. ----
+      const regions = [];
+      const region = (title, build) => regions.push({ title, build, actors: [] });
+
+      region("Embarcadero", (Z) => {
+        group();
+        water(0, 1400, 352, 560, 50);
+        group();
+        // The Bay Bridge's western span, silver, with the Bay Lights strung on its cables.
+        const deck = 334, tt = 176, towers = [560, 900];
+        for (const tx of towers) {
+          for (const lx of [tx - 12, tx + 12]) line([[lx, tt], [lx, 368]], C.silver, 3.2);
+          for (let y = tt + 20; y < deck - 10; y += 38) {
+            edge(tx - 12, y, tx + 12, y + 30, C.silver, 1.2);
+            edge(tx + 12, y, tx - 12, y + 30, C.silver, 1.2);
+          }
+        }
+        const sag = (x) => {
+          if (x < 560) return tt + 2 + ((560 - x) / 230) ** 1.5 * (deck - tt - 6);
+          if (x < 900) return tt + 2 + (1 - ((x - 730) / 170) ** 2) * 110;
+          return tt + 2 + ((x - 900) / 260) ** 1.5 * (deck - tt - 6);
+        };
+        const cv = [];
+        for (let x = 330; x <= 1160; x += 8) cv.push([x, Math.min(sag(x), deck)]);
+        line(cv, C.silver, 1.8);
+        for (let x = 340; x < 1150; x += 14) if (sag(x) < deck - 6 && towers.every((tx) => Math.abs(x - tx) > 14)) edge(x, sag(x) + 2, x, deck - 3, C.silver, 0.7);
+        line([[320, deck], [1170, deck]], C.silver, 3.4);
+        for (let x = 330; x < 1160; x += 70) line([[x, deck], [x, 368]], C.silver, 2);
+        // Downtown growing out of the left edge, Ferry Building and its clock tower on the right.
+        midCity(0, 330, 560, 300, [C.slate, C.steel, "#3a4560"]);
+        block(1030, 410, 350, 150, C.cream, C.white);
+        for (let ax = 1046; ax < 1366; ax += 32) {
+          circle(ax + 12, 470, 12, C.white, 1.4, Math.PI, TAU);
+          block(ax, 470, 24, 70, C.yellow);
+        }
+        block(1176, 190, 54, 222, C.cream, C.white);
+        fill([[1170, 194], [1203, 140], [1236, 194]], C.cream, 3);
+        outline([[1170, 194], [1203, 140], [1236, 194]], C.white, 1.4);
+        line([[1203, 140], [1203, 118]], C.white, 1.2);
+        disc(1203, 226, 14, C.white);
+        line([[1203, 226], [1203, 216]], C.dark, 1.2);
+        line([[1203, 226], [1210, 229]], C.dark, 1.2);
+        for (let k = 0; k < 6; k++) edge(1186, 262 + k * 22, 1220, 262 + k * 22, C.dark, 0.8);
+        for (let px = 340; px < 1020; px += 26) edge(px, 548, px, 562, C.bark, 1.6);
+        group();
+        ground();
+        group();
+        palm(420, 572, 130, 1);
+        palm(700, 572, 140, -1);
+        palm(960, 572, 120, 1);
+        lamps(Z, [[1020, 1390]]);
+        letters("Embarcadero", 26, 52, 54, C.white, 2.4);
+
+        actor(Z, {
+          ox: 0, oy: 0, w: 120, h: 50, fps: 3,
+          frames: range(2, (k) => {
+            fill([[6, 34], [114, 34], [104, 46], [16, 46]], C.white, 3);
+            block(30, 20, 60, 14, C.cream, C.white);
+            for (let wx = 36; wx < 86; wx += 12) dot(wx, 27, C.yellow, 2);
+            line([[60, 20], [60, 6]], C.grey, 1.4);
+            line([[4 + k * 3, 47], [116 - k * 3, 47]], C.sky, 1.2);
+          }),
+          pos: (t) => ({ x: 920 - mod(t * 22, 640), y: 410 + Math.sin(t * 1.5) * 2 }),
+        });
+        actor(Z, {
+          ox: 320, oy: 160, w: 860, h: 190, fps: 4,
+          frames: range(3, () => {
+            for (let x = 340; x < 1150; x += 18) if (R() < 0.7) dot(x + rand(-2, 2), Math.min(sag(x), deck) + 1, R() < 0.5 ? C.white : C.yellow, rand(1, 1.8));
+          }),
+          pos: still(320, 160),
+        });
+      });
+
+      region("Chinatown", (Z) => {
+        group();
+        const bldgs = [[0, 290, 330, C.red, C.jade], [290, 250, 300, C.jade, C.red], [890, 260, 320, C.cream, C.red], [1150, 250, 290, C.yellow, C.jade]];
+        for (const [x, w, top, body, roof] of bldgs) {
+          const trim = body === C.cream ? C.red : C.cream;
+          block(x, top, w, 560 - top, body);
+          fill([[x - 12, top + 2], [x + w + 12, top + 2], [x + w - 6, top - 16], [x + 6, top - 16]], roof, 4);
+          line([[x - 12, top + 2], [x - 20, top - 8]], roof, 2.4);
+          line([[x + w + 12, top + 2], [x + w + 20, top - 8]], roof, 2.4);
+          edge(x - 10, top + 3, x + w + 10, top + 3, C.cream, 1.6);
+          for (let wy = top + 24; wy < 420; wy += 72) {
+            for (let wx = x + 22; wx < x + w - 60; wx += 46) lit(wx, wy, 26, 34);
+            edge(x + 10, wy + 44, x + w - 50, wy + 44, trim, 1.6);
+            for (let bx = x + 14; bx < x + w - 52; bx += 12) edge(bx, wy + 44, bx, wy + 54, trim, 0.9);
+          }
+          const signCol = body === C.yellow ? C.red : C.yellow, ink = body === C.yellow ? C.yellow : C.red;
+          block(x + w - 42, top + 28, 22, 120, signCol);
+          for (let k = 0; k < 5; k++) {
+            const sy = top + 40 + k * 22;
+            edge(x + w - 36, sy, x + w - 26, sy, ink, 1.2);
+            edge(x + w - 31, sy - 5, x + w - 31, sy + 6, ink, 1.2);
+          }
+          fill([[x + 10, 478], [x + w - 10, 478], [x + w - 20, 462], [x + 20, 462]], roof, 3);
+          for (let ax = x + 20; ax < x + w - 20; ax += 18) edge(ax, 464, ax - 3, 477, C.cream, 1);
+          block(x + 18, 484, w - 36, 60, C.yellow, C.white);
+          for (let k = 1; k < 4; k++) edge(x + 18 + ((w - 36) * k) / 4, 486, x + 18 + ((w - 36) * k) / 4, 542, C.white, 1.2);
+        }
+        // Dragon Gate.
+        block(612, 404, 18, 156, C.red, C.cream);
+        block(810, 404, 18, 156, C.red, C.cream);
+        block(600, 374, 240, 26, C.red, C.cream);
+        block(684, 380, 72, 16, C.yellow);
+        fill([[574, 376], [866, 376], [840, 352], [600, 352]], C.jade, 4);
+        line([[574, 376], [562, 362]], C.jade, 2.6);
+        line([[866, 376], [878, 362]], C.jade, 2.6);
+        fill([[648, 352], [792, 352], [774, 334], [666, 334]], C.jade, 3);
+        line([[648, 352], [638, 342]], C.jade, 2.2);
+        line([[792, 352], [802, 342]], C.jade, 2.2);
+        disc(720, 326, 6, C.orange);
+        fill([[556, 414], [646, 414], [636, 400], [566, 400]], C.jade, 3);
+        fill([[794, 414], [884, 414], [874, 400], [804, 400]], C.jade, 3);
+        for (const lx of [596, 844]) {
+          fill([[lx - 12, 560], [lx - 10, 536], [lx - 2, 526], [lx + 8, 530], [lx + 12, 560]], C.cream, 3);
+          dot(lx + 2, 534, C.dark, 1.2);
+        }
+        const sagF = (x0, x1, y, d) => (x) => y + d * Math.sin(((x - x0) / (x1 - x0)) * Math.PI);
+        const strings = [[0, 560, 420, 26], [880, 1400, 420, 28]];
+        for (const [x0, x1, y, d] of strings) {
+          const f = sagF(x0, x1, y, d), vs = [];
+          for (let x = x0; x <= x1; x += 10) vs.push([x, f(x)]);
+          line(vs, C.cream, 1);
+        }
+        group();
+        ground();
+        group();
+        lamps(Z, [[560, 640], [790, 880]]);
+        letters("Chinatown", 26, 52, 54, C.white, 2.4);
+
+        const lantern = (ang) => {
+          const at = (dx, dy) => [20 + dx * Math.cos(ang) - dy * Math.sin(ang), 4 + dx * Math.sin(ang) + dy * Math.cos(ang)];
+          line([at(0, 0), at(0, 6)], C.cream, 0.9);
+          const body = [];
+          for (let t = 0; t < TAU; t += 0.3) body.push(at(Math.cos(t) * 9, 16 + Math.sin(t) * 11));
+          fill(body, C.red, 3);
+          line([at(-7, 12), at(7, 12)], C.yellow, 1);
+          line([at(-7, 20), at(7, 20)], C.yellow, 1);
+          line([at(0, 27), at(0, 34)], C.yellow, 1.3);
+        };
+        const swing = swaying(6, (s) => lantern(s * 0.18)), shared = [];
+        for (const [x0, x1, y, d] of strings) {
+          const f = sagF(x0, x1, y, d);
+          for (let x = x0 + 40; x < x1 - 20; x += 58) actor(Z, { ox: 0, oy: 0, w: 40, h: 44, fps: 6, frames: swing, cache: shared, shift: Math.floor(hash(x) * 6), pos: still(x - 20, f(x) - 4) });
+        }
+      });
+
+      region("North Beach", (Z) => {
+        group();
+        // Telegraph Hill with Coit Tower on top.
+        const hill = [[200, 560], [260, 420], [420, 330], [600, 286], [780, 282], [960, 320], [1120, 420], [1180, 560]];
+        fill(hill, C.forest, 6);
+        line(hill.slice(1, -1), C.green, 1.8);
+        for (let i = 0; i < 26; i++) disc(rand(280, 1100), rand(320, 520), rand(8, 14), pick([C.green, C.forest]));
+        block(676, 152, 44, 136, C.cream, C.white);
+        for (let k = 0; k < 4; k++) edge(686 + k * 8, 166, 686 + k * 8, 280, C.grey, 0.9);
+        block(668, 140, 60, 16, C.cream, C.white);
+        for (let k = 0; k < 5; k++) dot(674 + k * 12, 148, C.dark, 1.6);
+        block(690, 124, 16, 16, C.cream, C.white);
+        group();
+        // A narrow cream building, then Saints Peter & Paul with its twin spires.
+        block(0, 330, 130, 230, C.cream, C.white);
+        for (let wy = 350; wy < 500; wy += 56) for (const wx of [18, 74]) lit(wx, wy, 34, 38);
+        block(150, 300, 200, 260, C.white, C.cream);
+        for (const sx of [168, 290]) {
+          block(sx, 176, 42, 130, C.white, C.cream);
+          fill([[sx - 4, 180], [sx + 21, 116], [sx + 46, 180]], C.white, 3);
+          outline([[sx - 4, 180], [sx + 21, 116], [sx + 46, 180]], C.cream, 1.2);
+          line([[sx + 21, 116], [sx + 21, 98]], C.cream, 1.4);
+          line([[sx + 15, 104], [sx + 27, 104]], C.cream, 1.4);
+          for (let k = 0; k < 3; k++) block(sx + 12, 200 + k * 34, 18, 22, C.dark, C.cream);
+        }
+        disc(250, 350, 22, C.lilac);
+        circle(250, 350, 23, C.cream, 1.6);
+        for (let a = 0; a < TAU; a += TAU / 8) edge(250, 350, 250 + Math.cos(a) * 20, 350 + Math.sin(a) * 20, C.cream, 0.9);
+        block(226, 470, 48, 90, C.brown, C.cream);
+        circle(250, 470, 24, C.cream, 1.4, Math.PI, TAU);
+        // Cafés with striped awnings, a bookshop, tables out on the sidewalk.
+        shopfront(860, 180, 350, C.mint, { sign: "CAFFE", signCol: C.green, ink: C.white, awn: [C.green, C.white] });
+        shopfront(1040, 170, 330, C.yellow, { sign: "BOOKS", signCol: C.dark, ink: C.yellow, awn: [C.dark, C.yellow] });
+        shopfront(1210, 190, 360, C.pink, { sign: "TRATTORIA", signCol: C.red, ink: C.white, awn: [C.red, C.white] });
+        for (const tx of [900, 1270]) {
+          block(tx, 540, 26, 4, C.white);
+          line([[tx + 13, 544], [tx + 13, 558]], C.white, 1.4);
+          sitter(tx - 6, 556);
+          sitter(tx + 36, 556, C.cream);
+        }
+        line([[860, 432], [1060, 446], [1400, 430]], C.cream, 0.9);
+        group();
+        ground();
+        group();
+        tree(420, 560, 70);
+        tree(520, 560, 58, C.mint);
+        lamps(Z, [[140, 360], [840, 1400]]);
+        letters("North Beach", 26, 52, 54, C.white, 2.4);
+
+        // String lights twinkling over the cafés, and the wild parrots of Telegraph Hill.
+        actor(Z, {
+          ox: 856, oy: 424, w: 548, h: 24, fps: 3,
+          frames: range(3, () => {
+            for (let x = 870; x < 1395; x += 18) {
+              const y = x < 1060 ? 432 + ((x - 860) / 200) * 14 : 446 - ((x - 1060) / 340) * 16;
+              dot(x, y + 3, R() < 0.75 ? C.yellow : C.cream, 2.2);
+            }
+          }),
+          pos: still(856, 424),
+        });
+        for (const [y, sp, ph] of [[150, 40, 0], [170, 46, 300], [140, 36, 520], [190, 42, 820]]) {
+          actor(Z, {
+            ox: -14, oy: -12, w: 28, h: 24, fps: 6,
+            frames: [() => {
+              fill([[-6, 0], [6, -2], [10, 2], [-4, 4]], C.green, 1.6);
+              line([[-2, 0], [-8, -9]], C.green, 2);
+              dot(9, 0, C.red, 1.6);
+            }, () => {
+              fill([[-6, 0], [6, -2], [10, 2], [-4, 4]], C.green, 1.6);
+              line([[-2, 2], [-8, 9]], C.green, 2);
+              dot(9, 0, C.red, 1.6);
+            }],
+            pos: (t) => ({ x: mod(ph + t * sp, 1500) - 50, y: y + Math.sin(t * 2 + ph) * 10 }),
+          });
+        }
+      });
+
+      region("Fisherman's Wharf", (Z) => {
+        group();
+        water(0, 1400, 352, 560, 45);
+        // Alcatraz out in the bay.
+        fill([[250, 400], [268, 382], [305, 376], [362, 378], [400, 388], [416, 400]], C.grey, 3);
+        block(296, 360, 64, 20, C.cream);
+        for (let wx = 302; wx < 354; wx += 9) edge(wx, 366, wx + 3, 366, C.dark, 1);
+        line([[376, 380], [376, 340]], C.white, 2.2);
+        disc(376, 336, 3.5, C.yellow);
+        line([[250, 402], [416, 402]], C.sky, 1.2);
+        group();
+        // Pier 39's wooden warehouse, sea lions on their floats, the crab wheel sign, seafood stalls.
+        block(0, 380, 150, 180, C.brown, C.cream);
+        for (let k = 0; k < 6; k++) edge(10, 400 + k * 26, 140, 400 + k * 26, C.bark, 1);
+        block(14, 392, 122, 26, C.blue, C.white);
+        letters("PIER 39", 24, 412, 20, C.white, 1.4);
+        for (const [x0, w] of [[180, 170], [380, 150]]) {
+          block(x0, 536, w, 9, C.dark, C.grey);
+          for (let x = x0 + 20; x < x0 + w - 10; x += 38) {
+            const flip = (x / 38) % 2 < 1 ? 1 : -1;
+            fill([[x - 16 * flip, 536], [x - 10 * flip, 526], [x + 6 * flip, 524], [x + 16 * flip, 530], [x + 18 * flip, 536]], C.seal, 2.5);
+          }
+        }
+        line([[1000, 560], [1000, 420]], C.grey, 3);
+        disc(1000, 360, 62, C.white);
+        circle(1000, 360, 62, C.red, 5);
+        circle(1000, 360, 50, C.blue, 1.4);
+        const crab = [[968, 368], [976, 350], [1000, 344], [1024, 350], [1032, 368], [1000, 376]];
+        fill(crab, C.red, 3);
+        for (const s of [-1, 1]) {
+          line([[1000 + s * 26, 352], [1000 + s * 40, 336], [1000 + s * 34, 326]], C.red, 2.4);
+          for (const k of [0, 1, 2]) line([[1000 + s * 20, 366 + k * 3], [1000 + s * 40, 372 + k * 6]], C.red, 1.6);
+        }
+        dot(992, 352, C.dark, 1.6);
+        dot(1008, 352, C.dark, 1.6);
+        block(890, 430, 220, 30, C.blue, C.white);
+        letters("FISHERMAN'S WHARF", 902, 452, 17, C.white, 1.3);
+        shopfront(1150, 250, 400, C.cream, { sign: "CRAB & CHOWDER", signCol: C.red, ink: C.white, awn: [C.red, C.white], trim: C.red });
+        for (let px = 160; px < 880; px += 30) edge(px, 548, px, 562, C.bark, 1.6);
+        group();
+        ground();
+        group();
+        lamps(Z, [[0, 160], [960, 1040], [1140, 1400]]);
+        letters("Fisherman's Wharf", 26, 52, 54, C.white, 2.4);
+
+        actor(Z, {
+          ox: 326, oy: 286, w: 100, h: 100, fps: 6,
+          frames: range(10, (k) => {
+            const a = -Math.PI + (k / 10) * TAU;
+            for (const da of [-0.13, 0.13]) edge(376 + Math.cos(a) * 7, 336 + Math.sin(a) * 7, 376 + Math.cos(a + da) * 46, 336 + Math.sin(a + da) * 46, C.yellow, 1);
+          }),
+          pos: still(326, 286),
+        });
+        // Fishing boats bobbing at the dock.
+        [[560, C.red], [680, C.sky], [800, C.yellow]].forEach(([bx, col], i) => {
+          actor(Z, {
+            ox: bx - 50, oy: 440, w: 100, h: 100, fps: 3, shift: i,
+            frames: range(3, (k) => {
+              const b = [0, 2, 1][k];
+              fill([[bx - 44, 512 + b], [bx + 44, 512 + b], [bx + 34, 532 + b], [bx - 36, 532 + b]], col, 3);
+              edge(bx - 44, 512 + b, bx + 44, 512 + b, C.white, 1.4);
+              block(bx - 14, 494 + b, 30, 18, C.white, col);
+              line([[bx + 6, 494 + b], [bx + 4, 448 + b]], C.white, 1.4);
+              line([[bx + 4, 452 + b], [bx + 40, 510 + b]], C.white, 0.8);
+            }),
+            pos: still(bx - 50, 440),
+          });
+        });
+        for (const sx of [214, 290, 414, 490]) {
+          actor(Z, {
+            ox: sx - 10, oy: 504, w: 26, h: 28, fps: 3, shift: Math.floor(hash(sx) * 4),
+            frames: range(4, (k) => {
+              const up = k === 1 ? 6 : 0;
+              disc(sx + 6, 522 - up, 4.5, C.seal);
+              dot(sx + 8, 520 - up, C.dark, 1);
+            }),
+            pos: still(sx - 10, 504),
+          });
+        }
+      });
+
+      region("Lombard Street", (Z) => {
+        group();
+        const hill = [[0, 560], [0, 430], [200, 340], [380, 262], [900, 238], [1100, 300], [1400, 380], [1400, 560]];
+        fill(hill, C.forest, 6);
+        line(hill.slice(1, -1), C.green, 1.8);
+        for (let i = 0; i < 45; i++) disc(rand(40, 1380), rand(320, 540), rand(6, 12), pick([C.green, C.forest]));
+        group();
+        const road = [];
+        for (let s = 0; s <= 1; s += 0.004) road.push([645 + 205 * Math.sin(s * Math.PI * 7.5), 262 + s * 290]);
+        line(road, C.brick, 9);
+        line(road, "#d9785f", 4);
+        for (let i = 6; i < road.length - 6; i += 6) {
+          const [x, y] = road[i], [px, py] = road[i - 3], [nx, ny] = road[i + 3];
+          const dx = nx - px, dy = ny - py, d = Math.hypot(dx, dy) || 1;
+          for (const side of [-1, 1]) dot(x + (-dy / d) * 14 * side + rand(-2, 2), y + (dx / d) * 14 * side + rand(-2, 2), [C.pink, C.red, C.yellow, C.lilac][i % 4], 2.4);
+        }
+        for (let k = 0; k < 6; k++) {
+          const x = 380 + k * 86, top = 196 + (k % 2) * 10;
+          block(x, top, 70, 274 - top, [C.cream, C.pink, C.sky, C.mint, C.lilac, C.yellow][k], C.white);
+          lit(x + 10, top + 12, 18, 18);
+          lit(x + 40, top + 12, 18, 18);
+        }
+        group();
+        for (let k = 0; k < 2; k++) victorian(4 + k * 82, 80, 330 + k * 30, [C.cream, C.pink][k], { gable: false });
+        for (let k = 0; k < 6; k++) victorian(930 + k * 78, 76, 330 + k * 22, [C.yellow, C.mint, C.pink, C.sky, C.lilac, C.cream][k], { gable: false });
+        line([[250, 560], [250, 452]], C.grey, 2);
+        block(196, 432, 108, 24, C.green, C.white);
+        letters("LOMBARD ST", 202, 451, 17, C.white, 1.2);
+        group();
+        ground();
+        group();
+        lamps(Z, [[0, 170], [180, 320], [920, 1400]]);
+        letters("Lombard Street", 26, 52, 54, C.white, 2.4);
+
+        actor(Z, {
+          ox: 0, oy: 0, w: 34, h: 22, fps: 4,
+          frames: range(2, () => {
+            fill([[2, 16], [2, 9], [8, 8], [12, 2], [24, 2], [28, 8], [32, 9], [32, 16]], C.red, 2);
+            block(14, 4, 9, 5, C.sky);
+            disc(9, 17, 3.2, C.dark);
+            disc(25, 17, 3.2, C.dark);
+          }),
+          pos: (t) => {
+            const [x, y] = road[Math.floor(mod(t * 0.045, 1) * (road.length - 1))];
+            return { x: x - 17, y: y - 18 };
+          },
+        });
+      });
+
+      region("Golden Gate", (Z) => {
+        group();
+        fill([[0, 352], [0, 290], [120, 250], [260, 236], [420, 262], [560, 300], [700, 330], [760, 352]], C.forest, 5);
+        line([[0, 290], [120, 250], [260, 236], [420, 262], [560, 300], [700, 330]], C.green, 1.6);
+        fill([[900, 352], [1000, 300], [1160, 270], [1300, 286], [1400, 310], [1400, 352]], C.forest, 5);
+        line([[900, 352], [1000, 300], [1160, 270], [1300, 286], [1400, 310]], C.green, 1.6);
+        water(0, 1400, 352, 470, 40);
+        fill(rect(0, 470, 1400, 90), C.sand, 6, 0);
+        for (let i = 0; i < 80; i++) dot(rand(0, 1400), rand(480, 556), C.brown, 0.9);
+        group();
+        // The Golden Gate Bridge, close and big.
+        const deck = 310, top = 96;
+        for (const tx of [400, 1020]) {
+          for (const lx of [tx - 18, tx + 18]) line([[lx, top], [lx, 400]], C.bridge, 5);
+          for (const y of [top + 8, 150, 204, 256]) edge(tx - 18, y, tx + 18, y, C.bridge, 4);
+          edge(tx - 24, top, tx + 24, top, C.bridge, 2.6);
+          fill(rect(tx - 30, 400, 60, 20), C.grey, 4);
+        }
+        const cab = (x) => {
+          if (x < 400) return top + 4 + ((400 - x) / 300) ** 1.6 * (deck - top - 10);
+          if (x < 1020) return top + 4 + (1 - ((x - 710) / 310) ** 2) * 190;
+          return top + 4 + ((x - 1020) / 300) ** 1.6 * (deck - top - 10);
+        };
+        const cv = [];
+        for (let x = 100; x <= 1320; x += 8) cv.push([x, Math.min(cab(x), deck)]);
+        line(cv, C.bridge, 3);
+        for (let x = 110; x < 1310; x += 14) if (cab(x) < deck - 6 && Math.abs(x - 400) > 22 && Math.abs(x - 1020) > 22) edge(x, cab(x) + 2, x, deck - 3, C.bridge, 0.9);
+        line([[90, deck], [1330, deck]], C.bridge, 5);
+        line([[90, deck + 12], [1330, deck + 12]], C.bridge, 2);
+        for (let x = 100; x < 1320; x += 20) edge(x, deck + 4, x + 10, deck + 12, C.bridge, 1);
+        // The Palace of Fine Arts at the Marina end, a couple on the beach.
+        fill([[20, 560], [20, 420], [40, 380], [90, 352], [140, 352], [190, 380], [210, 420], [210, 560]], C.orange, 5);
+        for (let cx = 34; cx < 200; cx += 22) edge(cx, 430, cx, 556, C.cream, 2);
+        circle(115, 420, 72, C.cream, 1.6, Math.PI * 1.1, Math.PI * 1.9);
+        edge(16, 424, 214, 424, C.cream, 2);
+        stander(760, 556);
+        stander(784, 556, C.cream);
+        group();
+        ground();
+        group();
+        lamps(Z, [[0, 230]]);
+        letters("Golden Gate", 26, 52, 54, C.white, 2.4);
+
+        for (const [x, y, w, h, speed] of [[200, 300, 220, 50, 10], [560, 318, 190, 40, 7], [880, 296, 230, 46, 12], [1180, 320, 160, 36, 8]]) {
+          actor(Z, { ox: x - 6, oy: y - h - 10, w: w + 12, h: h + 20, fps: 3, frames: range(2, () => cloud(x, y, w, h)), pos: (t) => ({ x: mod(x - 6 - t * speed + 300, 1700) - 300, y: y - h - 10 }) });
+        }
+        actor(Z, {
+          ox: 0, oy: 0, w: 160, h: 60, fps: 2,
+          frames: range(2, () => {
+            fill([[10, 40], [150, 40], [140, 54], [18, 54]], C.red, 3);
+            for (const [bx, col] of [[24, C.blue], [52, C.yellow], [80, C.mint], [108, C.orange]]) block(bx, 22, 26, 18, col, C.dark);
+            block(124, 10, 18, 30, C.white, C.dark);
+          }),
+          pos: (t) => ({ x: mod(t * 16, 1700) - 200, y: 394 }),
+        });
+        actor(Z, {
+          ox: 700, oy: 300, w: 120, h: 260, fps: 3,
+          frames: range(3, (k) => {
+            const kx = 760 + [0, 6, -4][k], ky = 340 + [0, -6, 4][k];
+            fill([[kx, ky - 16], [kx + 12, ky], [kx, ky + 18], [kx - 12, ky]], C.pink, 3);
+            line([[kx - 12, ky], [kx + 12, ky]], C.white, 0.9);
+            line([[kx, ky + 18], [kx - 6, ky + 34], [kx + 4, ky + 46], [kx - 4, ky + 58]], C.yellow, 1.2);
+            line([[kx, ky + 18], [kx + 20, ky + 100], [770, 520]], C.white, 0.7);
+          }),
+          pos: still(700, 300),
+        });
+      });
+
+      region("Ocean Beach", (Z) => {
+        group();
+        const band = (y, h, col) => {
+          const top = [], bottom = [];
+          for (let x = 0; x <= 1400; x += 25) {
+            const th = h * Math.sqrt(Math.sin((Math.PI * x) / 1400));
+            top.push([x, y - th / 2]);
+            bottom.unshift([x, y + th / 2]);
+          }
+          fill([...top, ...bottom], col, 3);
+        };
+        band(306, 22, C.lilac);
+        band(318, 14, C.pink);
+        band(327, 9, C.orange);
+        group();
+        water(0, 1400, 330, 470, 40);
+        fill([[1000, 446], [1012, 432], [1040, 430], [1056, 446]], C.rock, 3);
+        fill(rect(0, 470, 1400, 90), C.sand, 6, 0);
+        for (let i = 0; i < 90; i++) dot(rand(0, 1400), rand(480, 556), C.brown, 0.9);
+        group();
+        // Cliff House on the rocks at Lands End.
+        fill([[0, 470], [0, 380], [60, 368], [220, 380], [300, 420], [330, 470]], C.rock, 5);
+        block(30, 316, 220, 62, C.white);
+        for (let wx = 44; wx < 236; wx += 30) lit(wx, 332, 18, 22);
+        edge(26, 316, 254, 316, C.grey, 2.4);
+        // Bonfire circle with friends; dunes and the Dutch windmill at the park end.
+        for (let a = 0; a < TAU; a += 0.6) disc(720 + Math.cos(a) * 20, 528 + Math.sin(a) * 6, 3.5, C.grey);
+        line([[704, 528], [736, 520]], C.brown, 3);
+        line([[706, 520], [734, 530]], C.brown, 3);
+        sitter(668, 540);
+        sitter(770, 540, C.cream);
+        sitter(700, 552, C.pink);
+        fill([[1080, 560], [1110, 470], [1200, 420], [1320, 400], [1400, 396], [1400, 560]], C.forest, 5);
+        line([[1110, 470], [1200, 420], [1320, 400], [1400, 396]], C.green, 1.6);
+        fill([[1222, 560], [1236, 340], [1284, 340], [1298, 560]], C.cream, 5);
+        fill([[1230, 344], [1242, 318], [1278, 318], [1290, 344]], C.brown, 3);
+        block(1250, 510, 20, 50, C.brown, C.white);
+        lit(1252, 420, 16, 20);
+        group();
+        ground();
+        group();
+        lamps(Z, [[1200, 1320]]);
+        letters("Ocean Beach", 26, 52, 54, C.white, 2.4);
+
+        actor(Z, {
+          ox: 1160, oy: 235, w: 200, h: 200, fps: 6,
+          frames: range(6, (k) => {
+            for (let j = 0; j < 4; j++) {
+              const a = (k / 6) * (Math.PI / 2) + (j * Math.PI) / 2, ca = Math.cos(a), sa = Math.sin(a);
+              const p = (u, v) => [1260 + ca * u - sa * v, 335 + sa * u + ca * v];
+              line([p(6, 0), p(92, 0)], C.brown, 2.2);
+              outline([p(26, 3), p(90, 3), p(90, 18), p(26, 18)], C.white, 1);
+            }
+            disc(1260, 335, 6, C.dark);
+          }),
+          pos: still(1160, 235),
+        });
+        actor(Z, {
+          ox: 694, oy: 470, w: 52, h: 58, fps: 8,
+          frames: range(4, () => {
+            const fl = (h, w, col) => fill([[720 - w, 524], [720 - w * 0.6, 524 - h * 0.6], [720 + rand(-4, 4), 524 - h], [720 + w * 0.6, 524 - h * 0.5], [720 + w, 524]], col, 2.5);
+            fl(rand(36, 48), 16, C.orange);
+            fl(rand(20, 30), 9, C.yellow);
+          }),
+          pos: still(694, 470),
+        });
+        actor(Z, {
+          ox: 0, oy: 448, w: 1400, h: 26, fps: 3,
+          frames: range(3, () => {
+            for (let x = rand(-40, 0); x < 1400; x += rand(60, 120)) {
+              const w = rand(40, 90), y = rand(456, 466);
+              line([[x, y], [x + w * 0.3, y - 3], [x + w * 0.7, y - 1], [x + w, y + 1]], C.white, 1.8);
+            }
+          }),
+          pos: still(0, 448),
+        });
+        actor(Z, {
+          ox: 480, oy: 386, w: 80, h: 60, fps: 4,
+          frames: range(4, (k) => {
+            const b = Math.sin((k / 4) * TAU) * 2;
+            line([[484, 432], [510, 424 + b], [540, 428], [556, 436]], C.white, 2.2);
+            line([[496, 430 + b], [532, 428 + b]], C.yellow, 2.6);
+            circle(516, 404 + b, 4.5, C.white, 1.6);
+            line([[516, 410 + b], [514, 422 + b]], C.white, 2);
+            line([[514, 422 + b], [504, 428 + b]], C.white, 1.8);
+            line([[514, 422 + b], [524, 428 + b]], C.white, 1.8);
+            line([[504, 410 + b], [528, 414 + b]], C.white, 1.6);
+          }),
+          pos: still(480, 386),
+        });
+      });
+
+      region("Golden Gate Park", (Z) => {
+        group();
+        fill([[0, 560], [0, 396], [300, 380], [700, 366], [1100, 380], [1400, 400], [1400, 560]], C.forest, 6, 0);
+        for (let x = 10; x < 1400; x += rand(60, 110)) cypress(x, rand(420, 470), rand(50, 80));
+        group();
+        // The Conservatory of Flowers: white glasshouse, central dome, two wings.
+        const cx = 700;
+        block(cx - 260, 430, 520, 110, C.white, C.cream);
+        fill([[cx - 90, 432], [cx - 80, 380], [cx - 40, 340], [cx, 326], [cx + 40, 340], [cx + 80, 380], [cx + 90, 432]], C.white, 4);
+        line([[cx - 90, 432], [cx - 80, 380], [cx - 40, 340], [cx, 326], [cx + 40, 340], [cx + 80, 380], [cx + 90, 432]], C.cream, 1.6);
+        line([[cx, 326], [cx, 304]], C.cream, 1.6);
+        disc(cx, 300, 4, C.yellow);
+        for (let gx = cx - 250; gx < cx + 250; gx += 26) edge(gx, 440, gx, 536, C.sky, 0.9);
+        for (let gy = 452; gy < 536; gy += 22) edge(cx - 254, gy, cx + 254, gy, C.sky, 0.8);
+        for (let a = Math.PI * 1.08; a < Math.PI * 1.95; a += 0.16) edge(cx, 432, cx + Math.cos(a) * 88, 432 + Math.sin(a) * 100, C.sky, 0.8);
+        block(cx - 22, 480, 44, 60, C.yellow, C.cream);
+        // Flower beds, and the bison paddock.
+        for (let x = cx - 280; x < cx + 280; x += 9) dot(x + rand(-3, 3), rand(546, 556), pick([C.pink, C.red, C.yellow, C.lilac, C.orange]), 2.6);
+        for (const bx of [1120, 1230]) {
+          fill([[bx - 34, 540], [bx - 36, 512], [bx - 20, 494], [bx + 6, 492], [bx + 22, 504], [bx + 26, 540]], C.brown, 3);
+          for (const lx of [bx - 26, bx - 12, bx + 6, bx + 18]) line([[lx, 538], [lx, 554]], C.bark, 2.2);
+        }
+        edge(1060, 520, 1320, 520, C.cream, 1.2);
+        for (let fx = 1060; fx <= 1320; fx += 26) edge(fx, 510, fx, 556, C.cream, 1.2);
+        tree(160, 560, 90);
+        tree(300, 560, 70, C.mint);
+        group();
+        ground();
+        group();
+        lamps(Z, [[400, 1000]]);
+        letters("Golden Gate Park", 26, 52, 54, C.white, 2.4);
+
+        for (const bx of [1120, 1230]) {
+          actor(Z, {
+            ox: bx - 4, oy: 480, w: 50, h: 46, fps: 2, shift: bx === 1230 ? 1 : 0,
+            frames: range(3, (k) => {
+              const d = [0, 6, 2][k];
+              disc(bx + 26, 508 + d, 10, C.bark);
+              line([[bx + 30, 500 + d], [bx + 36, 496 + d]], C.cream, 1.2);
+            }),
+            pos: still(bx - 4, 480),
+          });
+        }
+        actor(Z, {
+          ox: 0, oy: 360, w: 1400, h: 200, fps: 3,
+          frames: range(4, () => {
+            for (let i = 0; i < 26; i++) dot(rand(10, 1390), rand(370, 540), C.yellow, rand(1, 2));
+          }),
+          pos: still(0, 360),
+        });
+      });
+
+      region("Haight-Ashbury", (Z) => {
+        group();
+        tree(40, 560, 80);
+        const houses = [[120, 170, 330, C.purple, C.yellow], [300, 160, 300, C.orange, C.white], [470, 170, 320, C.teal, C.pink], [650, 160, 300, C.pink, C.white], [820, 170, 330, C.yellow, C.purple]];
+        houses.forEach(([x, w, top, col, trim], i) => {
+          victorian(x, w, top, col, { trim, door: i % 2 ? C.teal : C.red, gable: i % 2 === 0 });
+          // Psychedelic swirls painted on the siding.
+          for (let k = 0; k < 3; k++) circle(x + 18 + k * 22, 548 - k * 3, 6, trim, 1.2, 0, TAU * 0.85);
+        });
+        // A peace sign mural, the record shop, the corner street signs.
+        shopfront(1000, 230, 290, C.lilac, { sign: "RECORDS", signCol: C.dark, ink: C.pink, awn: [C.orange, C.yellow] });
+        disc(1115, 366, 46, C.sky);
+        circle(1115, 366, 40, C.white, 4);
+        line([[1115, 328], [1115, 404]], C.white, 4);
+        line([[1115, 368], [1087, 396]], C.white, 4);
+        line([[1115, 368], [1143, 396]], C.white, 4);
+        line([[1270, 560], [1270, 420]], C.grey, 2);
+        block(1222, 404, 98, 20, C.green, C.white);
+        letters("HAIGHT", 1232, 420, 15, C.white, 1.1);
+        block(1240, 430, 96, 20, C.green, C.white);
+        letters("ASHBURY", 1246, 446, 15, C.white, 1.1);
+        group();
+        ground();
+        group();
+        lamps(Z, [[100, 1000]]);
+        letters("Haight-Ashbury", 26, 52, 54, C.white, 2.4);
+
+        // The famous legs kicking out of an upper window, and a record spinning in the shop.
+        actor(Z, {
+          ox: 300, oy: 330, w: 160, h: 90, fps: 3,
+          frames: range(2, (k) => {
+            for (const [lx, a] of [[350, k ? 0.5 : 0.2], [372, k ? 0.2 : 0.5]]) {
+              const fx = lx + Math.cos(-a) * 60, fy = 360 + Math.sin(-a) * 60;
+              line([[lx, 372], [fx, fy]], C.pink, 6);
+              for (let s = 0.2; s < 1; s += 0.2) dot(lx + (fx - lx) * s, 372 + (fy - 372) * s, C.dark, 1.2);
+              fill([[fx - 2, fy - 4], [fx + 14, fy - 10], [fx + 16, fy - 2], [fx, fy + 4]], C.red, 2);
+            }
+          }),
+          pos: still(300, 330),
+        });
+        actor(Z, {
+          ox: 1040, oy: 498, w: 50, h: 50, fps: 8,
+          frames: range(4, (k) => {
+            disc(1065, 523, 20, C.dark);
+            disc(1065, 523, 6, C.orange);
+            const a = (k / 4) * TAU;
+            line([[1065 + Math.cos(a) * 9, 523 + Math.sin(a) * 9], [1065 + Math.cos(a) * 17, 523 + Math.sin(a) * 17]], C.grey, 1);
+          }),
+          pos: still(1040, 498),
+        });
+      });
+
+      region("Alamo Square", (Z) => {
+        group();
+        midCity(380, 1380, 380, 190, [C.slate, C.steel, "#3a4560"]);
+        fill([[880, 380], [908, 140], [936, 380]], C.cream, 3);
+        line([[908, 140], [908, 116]], C.white, 1.2);
+        fill([[1080, 380], [1080, 190], [1092, 164], [1110, 156], [1128, 164], [1140, 190], [1140, 380]], C.steel, 4);
+        group();
+        // Alamo Square's hill in front, the Painted Ladies along Steiner Street.
+        fill([[0, 560], [0, 380], [140, 360], [300, 380], [440, 440], [500, 560]], C.green, 6);
+        line([[0, 380], [140, 360], [300, 380], [440, 440]], C.mint, 1.6);
+        tree(90, 400, 60);
+        tree(220, 410, 50, C.mint);
+        for (const [x, y, col] of [[120, 470, C.pink], [260, 490, C.yellow]]) {
+          block(x, y, 46, 10, col);
+          sitter(x + 12, y + 2);
+          sitter(x + 30, y + 2, C.cream);
+        }
+        [C.pink, C.mint, C.lilac, C.yellow, C.sky].forEach((col, i) => {
+          victorian(500 + i * 178, 168, 400, col);
+          if (i === 1) {
+            const cx = 500 + 178 + 168 * 0.74;
+            fill([[cx - 9, 452], [cx - 8, 440], [cx - 5, 435], [cx - 6, 427], [cx - 2, 430], [cx + 2, 430], [cx + 6, 427], [cx + 5, 435], [cx + 8, 440], [cx + 9, 452]], C.dark, 2);
+          }
+        });
+        group();
+        ground();
+        group();
+        lamps(Z);
+        letters("Alamo Square", 26, 52, 54, C.white, 2.4);
+
+        const tail = 500 + 178 + 168 * 0.74 + 8;
+        actor(Z, {
+          ox: tail - 6, oy: 428, w: 28, h: 30, fps: 4,
+          frames: [0, 1, 2, 1].map((k) => () => line([[tail, 450], [tail + 7, 446 - k], [tail + 6 + k * 2, 438 - k]], C.dark, 1.8)),
+          pos: still(tail - 6, 428),
+        });
+      });
+
+      region("The Castro", (Z) => {
+        group();
+        victorian(10, 150, 320, C.sky, { gable: false });
+        // The Castro Theatre: ornate facade, tall vertical sign, chasing marquee lights.
+        block(200, 300, 300, 260, C.cream, C.white);
+        fill([[200, 302], [230, 260], [470, 260], [500, 302]], C.cream, 4);
+        outline([[200, 302], [230, 260], [470, 260], [500, 302]], C.white, 1.6);
+        for (let k = 0; k < 3; k++) circle(270 + k * 80, 330, 24, C.brick, 2, Math.PI, TAU);
+        block(318, 150, 64, 270, C.red, C.yellow);
+        stacked("CASTRO", 334, 196, 40, C.yellow, 2.2);
+        block(220, 430, 260, 40, C.dark, C.yellow);
+        block(240, 480, 220, 70, C.yellow, C.white);
+        shopfront(520, 200, 340, C.pink, { sign: "BAR", signCol: C.purple, ink: C.yellow, awn: [C.purple, C.pink] });
+        shopfront(720, 200, 320, C.mint, { sign: "BOOKS & CO", signCol: C.teal, ink: C.white, awn: [C.teal, C.white] });
+        victorian(940, 160, 330, C.lilac);
+        victorian(1110, 150, 310, C.yellow, { gable: false });
+        victorian(1260, 140, 330, C.orange);
+        // Rainbow crosswalk on the road.
+        group();
+        ground();
+        for (let k = 0; k < 6; k++) fill(rect(600 + k * 26, 590, 22, 48), RAINBOW[k], 4);
+        group();
+        line([[960, 560], [960, 150]], C.white, 2.4);
+        lamps(Z, [[180, 520], [930, 1000]]);
+        letters("The Castro", 26, 52, 54, C.white, 2.4);
+
+        actor(Z, {
+          ox: 958, oy: 140, w: 170, h: 120, fps: 5,
+          frames: range(4, (k) => {
+            for (let s = 0; s < 6; s++) {
+              const top = [], bottom = [];
+              for (let u = 0; u <= 1.001; u += 0.1) {
+                const x = 962 + u * 150, wv = Math.sin(u * 5 + k * 1.6) * 6 * u;
+                top.push([x, 152 + s * 14 + wv]);
+                bottom.unshift([x, 166 + s * 14 + wv]);
+              }
+              fill([...top, ...bottom], RAINBOW[s], 3);
+            }
+          }),
+          pos: still(958, 140),
+        });
+        actor(Z, {
+          ox: 218, oy: 424, w: 266, h: 52, fps: 6,
+          frames: range(3, (k) => {
+            for (let i = 0; i < 22; i++) if ((i + k) % 3 === 0) dot(226 + i * 12, 432, C.yellow, 2.4);
+            for (let i = 0; i < 22; i++) if ((i + k) % 3 === 1) dot(226 + i * 12, 468, C.yellow, 2.4);
+          }),
+          pos: still(218, 424),
+        });
+      });
+
+      region("The Mission", (Z) => {
+        group();
+        const park = [[0, 560], [0, 360], [240, 372], [500, 400], [720, 440], [720, 560]];
+        fill(park, C.green, 6);
+        line(park.slice(1, -1), C.mint, 1.6);
+        for (const [x, y, col] of [[110, 430, C.pink], [300, 470, C.yellow], [520, 470, C.sky], [200, 520, C.lilac]]) {
+          block(x, y, 46, 10, col);
+          sitter(x + 12, y + 2);
+          sitter(x + 30, y + 2, C.cream);
+        }
+        block(730, 340, 170, 220, C.cream);
+        fill([[730, 342], [760, 312], [870, 312], [900, 342]], C.cream, 3);
+        edge(726, 342, 904, 342, C.brick, 2.4);
+        for (const cx of [750, 790, 840, 880]) edge(cx, 360, cx, 552, C.white, 1.8);
+        for (let k = 0; k < 3; k++) block(786 + k * 22, 320, 10, 14, C.dark);
+        block(800, 470, 30, 90, C.brown, C.white);
+        line([[815, 312], [815, 288]], C.white, 1.6);
+        line([[808, 296], [822, 296]], C.white, 1.6);
+        block(920, 300, 480, 86, C.lilac);
+        for (let wx = 940; wx < 1380; wx += 74) lit(wx, 316, 34, 46);
+        block(930, 388, 300, 30, C.red, C.yellow);
+        letters("TAQUERIA", 960, 412, 26, C.yellow, 1.6);
+        block(920, 420, 480, 140, C.mint);
+        disc(1010, 486, 30, C.yellow);
+        for (let a = 0; a < TAU; a += Math.PI / 6) edge(1010 + Math.cos(a) * 38, 486 + Math.sin(a) * 38, 1010 + Math.cos(a) * 50, 486 + Math.sin(a) * 50, C.orange, 2);
+        fill([[920, 560], [920, 520], [990, 506], [1060, 530], [1130, 508], [1200, 530], [1200, 560]], C.blue, 4);
+        for (const [x, y] of [[1100, 450], [1140, 470], [1180, 446]]) {
+          disc(x, y, 9, C.pink);
+          dot(x, y, C.yellow, 3);
+        }
+        fill([[1240, 470], [1252, 458], [1264, 470], [1252, 490]], C.red, 2);
+        for (let k = 0; k < 5; k++) edge(1280 + k * 12, 440, 1270 + k * 12, 540, C.lilac, 2);
+        block(1340, 470, 40, 90, C.red, C.white);
+        palm(130, 470, 150, 1);
+        palm(560, 480, 140, -1);
+        group();
+        ground();
+        group();
+        lamps(Z, [[700, 1400]]);
+        letters("The Mission", 26, 52, 54, C.white, 2.4);
+
+        actor(Z, {
+          ox: 920, oy: 418, w: 480, h: 30, fps: 5,
+          frames: range(3, () => {
+            line([[922, 422], [1398, 422]], C.cream, 0.9);
+            [C.pink, C.yellow, C.sky, C.orange, C.lilac, C.green].forEach((col, i) => {
+              for (let x = 930 + i * 26; x < 1390; x += 156) {
+                const sway = rand(-3, 3);
+                fill([[x, 423], [x + 18, 423], [x + 16 + sway, 440], [x + 2 + sway, 440]], col, 2);
+              }
+            });
+          }),
+          pos: still(920, 418),
+        });
+      });
+
+      const NR = regions.length, L = NR * W, F = L * PARALLAX;
+
+      // Tap targets (region-local boxes) and the fact card each one opens. The font has no commas.
+      const SPOTS = {
+        "Embarcadero": [
+          [1030, 110, 350, 450, "Ferry Building", "Opened in 1898. The clock tower was modelled on the Giralda bell tower in Seville."],
+          [320, 130, 850, 240, "Bay Bridge", "Opened in 1936 - six months before the Golden Gate. The Bay Lights are LEDs strung along its cables."],
+        ],
+        "Chinatown": [[596, 370, 250, 190, "Dragon Gate", "Dedicated in 1970. It opens onto the oldest Chinatown in North America."]],
+        "North Beach": [
+          [660, 95, 80, 200, "Coit Tower", "Built in 1933 with money Lillie Hitchcock Coit left to beautify the city she loved."],
+          [140, 90, 220, 470, "Saints Peter & Paul", "Marilyn Monroe and Joe DiMaggio posed for wedding photos on its steps in 1954."],
+          [856, 320, 544, 240, "Little Italy", "Caffe Trieste has been pulling espresso in North Beach since 1956."],
+        ],
+        "Fisherman's Wharf": [
+          [240, 330, 190, 80, "Alcatraz", "A federal prison from 1934 to 1963. Its lighthouse was the first on the West Coast."],
+          [0, 380, 540, 170, "Pier 39", "Sea lions moved onto the docks after the 1989 earthquake and never left."],
+          [930, 290, 140, 270, "Crab wheel", "Dungeness crab season usually opens in November. The wheel sign is the Wharf's mascot."],
+        ],
+        "Lombard Street": [[430, 230, 440, 330, "Lombard Street", "One block with eight hairpin turns. Built in 1922 because the 27 percent grade was too steep to drive."]],
+        "Golden Gate": [
+          [10, 340, 210, 220, "Palace of Fine Arts", "Built for the 1915 Panama-Pacific Exposition. It is the only one still on its original site."],
+          [370, 85, 680, 330, "Golden Gate Bridge", "Opened in 1937. Its colour is International Orange - chosen to stand out in the fog."],
+        ],
+        "Ocean Beach": [
+          [0, 300, 330, 170, "Cliff House", "There has been a Cliff House on these rocks since 1863. This one dates from 1909."],
+          [1215, 310, 90, 250, "Dutch Windmill", "Built in 1903 to pump the groundwater that turned the dunes into Golden Gate Park."],
+        ],
+        "Golden Gate Park": [
+          [430, 320, 540, 220, "Conservatory of Flowers", "Opened in 1879. It is the oldest building in Golden Gate Park."],
+          [1080, 485, 190, 75, "Bison paddock", "Bison have grazed in Golden Gate Park since the 1890s."],
+        ],
+        "Haight-Ashbury": [
+          [300, 330, 160, 90, "Piedmont Boutique", "The fishnet legs kicking out of its window are a Haight Street landmark."],
+          [1000, 280, 230, 280, "Record shop", "Amoeba Music on Haight Street lives in an old bowling alley."],
+        ],
+        "Alamo Square": [[500, 340, 890, 220, "Painted Ladies", "Victorians from the 1890s on Steiner Street - famous from the Full House opening credits."]],
+        "The Castro": [
+          [190, 140, 320, 420, "Castro Theatre", "A movie palace from 1922 designed by Timothy Pflueger."],
+          [596, 588, 164, 52, "Rainbow crosswalk", "The rainbow crosswalks at Castro and 18th were painted in 2014."],
+        ],
+        "The Mission": [
+          [720, 280, 190, 280, "Mission Dolores", "Founded in 1776. Its adobe chapel from 1791 is the oldest building in the city."],
+          [920, 296, 480, 264, "Taqueria", "The Mission burrito - rice and beans and everything wrapped in foil - was born here in the 1960s."],
+        ],
+      };
+      const regionAt = (title) => regions.findIndex((Z) => Z.title === title);
+
+      // ---- the far layer: one periodic band of hills and city lights behind everything, plus stars ----
+      const far = { tiles: [], stars: [], actors: [] };
+      function buildFar() {
+        out = [];
+        grp = 0;
+        OFF = [0, 0];
+        R = rng(99);
+        const top = (x) => 336 - 30 - 18 * Math.sin((TAU * 3 * x) / F) - 12 * Math.sin((TAU * 7 * x) / F + 1) - 6 * Math.sin((TAU * 17 * x) / F);
+        for (let x0 = 0; x0 < F; x0 += 700) {
+          const poly = [[x0, 345]];
+          for (let x = x0; x <= x0 + 701; x += 20) poly.push([x, top(x)]);
+          poly.push([x0 + 701, 345]);
+          fill(poly, C.far, 6, 0);
+        }
+        const sx = F * 0.62, sy = top(sx) + 4;
+        for (const dx of [-14, 0, 14]) line([[sx, sy], [sx + dx, sy - 100]], C.bridge, 1.4);
+        edge(sx - 12, sy - 60, sx + 12, sy - 60, C.white, 1.2);
+        edge(sx - 13, sy - 84, sx + 13, sy - 84, C.white, 1.2);
+        for (let i = 0; i < 160; i++) {
+          const x = rand(0, F), y = rand(15, 250);
+          far.stars.push([x, y]);
+          dot(x, y, C.white, rand(0.8, 1.5));
+        }
+        far.strokes = out.sort((a, b) => a.group - b.group || a.kind - b.kind || a.seq - b.seq);
+      }
+
+      // ---- tiles: each W-wide slice of a layer renders from every stroke that touches it ----
+      function renderTile(strokes, t, shiftFor) {
+        const c = layer(W * DPR, H * DPR), g = c.getContext("2d"), x0 = t * W * DPR, x1 = x0 + W * DPR;
+        const jobs = [];
+        for (const [list, shift] of shiftFor(t)) for (const st of list) if (st.box[2] + shift > x0 && st.box[0] + shift < x1) jobs.push([st, shift]);
+        jobs.sort((a, b) => a[0].group - b[0].group || a[0].kind - b[0].kind || a[0].seq - b[0].seq);
+        return { c, g, jobs, i: 0, x0 };
+      }
+      function advance(job, budget) {
+        const end = performance.now() + budget;
+        while (job.i < job.jobs.length && performance.now() < end) {
+          const [st, shift] = job.jobs[job.i++];
+          paint(st, job.g, job.x0 - shift);
+        }
+        return job.i >= job.jobs.length;
+      }
+      const near = (t) => [-1, 0, 1].map((d) => {
+        const r = t + d, rr = mod(r, NR);
+        ensure(rr);
+        return [regions[rr].strokes, (r - rr) * W * DPR];
+      });
+      const ensure = (i) => regions[i].strokes || buildRegion(regions[i], i);
+      const farNear = (t) => [[far.strokes, 0], [far.strokes, F * DPR], [far.strokes, -F * DPR]];
+
+      function buildRegion(Z, i) {
+        out = [];
+        grp = 0;
+        OFF = [i * W, 0];
+        R = rng(1000 + i * 77);
+        windowList = [];
+        Z.x0 = i * W;
+        Z.build(Z);
+        Z.strokes = out;
+        Z.windows = windowList;
+        Z.dark = [];
+        OFF = [0, 0];
+      }
+
+      // ---- traffic that rides the whole loop ----
+      const world = { actors: [] };
+      const SPEED = 260, BIKE_X = 430;
+      actor(world, {
+        ox: 0, oy: 0, w: 145, h: 140, fps: 18,
+        frames: range(8, (k) => {
+          const th = (k / 8) * TAU, r0 = [30, 115], f0 = [110, 115], bb = [63, 115], seat = [57, 81], bar = [100, 77], joint = [97, 83];
+          const knee = (hip, foot) => {
+            const L1 = 21, L2 = 21, dx = foot[0] - hip[0], dy = foot[1] - hip[1], d = Math.min(L1 + L2 - 0.1, Math.hypot(dx, dy));
+            const a = Math.atan2(dy, dx), b = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))));
+            return [hip[0] + Math.cos(a - b) * L1, hip[1] + Math.sin(a - b) * L1];
+          };
+          const pedal = (a) => [bb[0] + Math.cos(a) * 9, bb[1] + Math.sin(a) * 9];
+          const back = pedal(th + Math.PI), front = pedal(th);
+          line([seat, knee(seat, back), back], C.grey, 2.4);
+          for (const c of [r0, f0]) {
+            circle(c[0], c[1], 22, C.white, 1.8);
+            for (let j = 0; j < 3; j++) {
+              const a = th * 0.5 + (j * Math.PI) / 3;
+              line([[c[0] + Math.cos(a) * 20, c[1] + Math.sin(a) * 20], [c[0] - Math.cos(a) * 20, c[1] - Math.sin(a) * 20]], C.grey, 0.7);
+            }
+          }
+          line([r0, bb, seat, r0], C.orange, 2);
+          line([bb, joint, seat], C.orange, 2);
+          line([joint, f0], C.orange, 2);
+          line([joint, bar, [108, 75]], C.orange, 2);
+          line([seat, [87, 43]], C.white, 3);
+          line([[87, 43], [97, 59], bar], C.white, 2);
+          line([seat, knee(seat, front), front], C.white, 2.6);
+          circle(93, 31, 8, C.white, 2);
+          fill([[83, 29], [87, 18], [99, 16], [105, 25], [103, 29]], C.orange, 3);
+        }),
+        pos: (t) => ({ x: cam + BIKE_X, y: 497 }),
+      });
+      actor(world, {
+        ox: 812, oy: 525, w: 224, h: 92, fps: 3,
+        frames: range(2, () => {
+          const cx = 820;
+          block(cx, 548, 180, 20, C.cream);
+          block(cx, 568, 180, 34, C.red, C.cream);
+          fill([[cx - 8, 548], [cx + 8, 532], [cx + 172, 532], [cx + 188, 548]], C.red, 4);
+          outline([[cx - 8, 548], [cx + 8, 532], [cx + 172, 532], [cx + 188, 548]], C.cream, 1.6);
+          for (let k = 0; k < 7; k++) block(cx + 10 + k * 24, 552, 16, 14, C.yellow, C.dark);
+          edge(cx + 6, 585, cx + 174, 585, C.yellow, 1.4);
+          for (const wx of [cx + 30, cx + 150]) {
+            disc(wx, 604, 9, C.dark);
+            circle(wx, 604, 9, C.grey, 1.4);
+          }
+          const hx = cx + 196;
+          line([[cx + 184, 550], [cx + 184, 600]], C.grey, 1.4);
+          circle(hx, 556, 5.5, C.white, 1.6);
+          line([[hx - 1, 562], [hx - 2, 582]], C.white, 2);
+          line([[hx - 1, 566], [cx + 185, 556]], C.white, 1.6);
+          line([[hx - 1, 566], [hx + 9, 574]], C.white, 1.6);
+          line([[hx - 2, 582], [cx + 187, 598]], C.white, 1.8);
+          line([[hx - 2, 582], [hx + 8, 594]], C.white, 1.8);
+        }),
+        pos: (t) => ({ x: 1700 - 34 * t, y: 525 }),
+      });
+      actor(world, {
+        ox: 1135, oy: 556, w: 135, h: 78, fps: 8,
+        frames: range(4, (k) => {
+          const wx = 1140;
+          fill([[wx, 622], [wx, 600], [wx + 18, 598], [wx + 32, 584], [wx + 86, 584], [wx + 100, 598], [wx + 122, 602], [wx + 122, 622]], C.white, 4);
+          fill([[wx + 36, 597], [wx + 40, 588], [wx + 60, 588], [wx + 60, 597]], C.dark, 2);
+          fill([[wx + 66, 597], [wx + 66, 588], [wx + 82, 588], [wx + 92, 597]], C.dark, 2);
+          block(wx + 52, 572, 14, 12, C.grey);
+          disc(wx + 59, 571, 7, C.dark);
+          for (let j = 0; j < 3; j++) {
+            const a = -Math.PI + ((k + j * 1.3) / 4) * Math.PI;
+            edge(wx + 59 + Math.cos(a) * 11, 571 + Math.sin(a) * 11, wx + 59 + Math.cos(a) * 16, 571 + Math.sin(a) * 16, C.sky, 1);
+          }
+          dot(wx + 118, 608, C.yellow, 2);
+          dot(wx + 3, 608, C.red, 2);
+          for (const tx of [wx + 26, wx + 96]) {
+            disc(tx, 622, 9, C.dark);
+            circle(tx, 622, 9, C.grey, 1.4);
+          }
+        }),
+        pos: (t) => ({ x: 190 * t - 2400, y: 556 }),
+      });
+      const sparkle = { ox: 0, oy: 0, w: 14, h: 14, fps: 1, shift: 0, cache: [], frames: range(2, (k) => {
+        const s = 4 + k * 2;
+        line([[7, 7 - s], [7, 7 + s]], C.white, 0.9);
+        line([[7 - s, 7], [7 + s, 7]], C.white, 0.9);
+      }) };
+      const moon = { ox: 0, oy: 0, w: 70, h: 70, fps: 1, shift: 0, cache: [], frames: [() => {
+        disc(35, 35, 26, C.cream);
+        circle(35, 35, 27, C.white, 1.4);
+        disc(27, 30, 4, C.sand);
+        disc(42, 42, 3, C.sand);
+      }] };
+
+      // ---- the ride ----
+      const view = document.getElementById("scene");
+      view.width = W * DPR;
+      view.height = H * DPR;
+      const vctx = view.getContext("2d");
+      let cam = +params.get("cam") || 0, t0 = null;
+      const tiles = new Map(), farTiles = new Map();
+      let job = null;
+      const wrapX = (x, len) => {
+        let s = mod(x, len);
+        if (s > len - W) s -= len;
+        return s;
+      };
+
+      vctx.fillStyle = "#8a8780";
+      vctx.font = `${16 * DPR}px -apple-system, sans-serif`;
+      vctx.fillText("painting san francisco…", 40 * DPR, 60 * DPR);
+      setTimeout(() => {
+        buildFar();
+        for (let t = 0; t < F / W; t++) {
+          const j = renderTile(far.strokes, t, farNear);
+          advance(j, Infinity);
+          farTiles.set(t, j.c);
+        }
+        const first = Math.floor(cam / W);
+        for (const t of [first, first + 1]) {
+          const j = renderTile(null, mod(t, NR), near);
+          advance(j, Infinity);
+          tiles.set(mod(t, NR), j.c);
+        }
+        for (const a of world.actors) a.frames.forEach((_, k) => frameOf(a, k / a.fps));
+        requestAnimationFrame(frame);
+      }, 30);
+
+      // ---- riding it: scroll, drag and the arrow keys push the bike; taps ring the bell or open a fact card ----
+      let v = params.has("still") || matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : SPEED, cruise = v, pedal = 0, last = null, clock = 0;
+      let drag = null, dragDx = 0, card = null;
+      const held = {}, dings = [];
+      const bike = world.actors[0], cableCar = world.actors[1];
+      const toScene = (e) => {
+        const rc = view.getBoundingClientRect();
+        return [((e.clientX - rc.left) * W) / rc.width, ((e.clientY - rc.top) * H) / rc.height];
+      };
+      const onBike = ([x, y]) => x > BIKE_X + 10 && x < BIKE_X + 135 && y > 497 && y < 637;
+      function spotAt([x, y]) {
+        const ct = Math.floor(cam / W);
+        for (let d = -1; d <= 1; d++) {
+          const i = mod(ct + d, NR), sx = wrapX(i * W - cam, L);
+          for (const s of SPOTS[regions[i].title] || []) if (x > sx + s[0] && x < sx + s[0] + s[2] && y > s[1] && y < s[1] + s[3]) return { i, s };
+        }
+      }
+      // A cream sticky note, hand-lettered in posca, pinned in the world above its landmark.
+      function makeCard(i, s) {
+        const [x, y, w, h, title, fact] = s;
+        const size = 19, k = size / 1000, maxW = 330, rows = [""];
+        const width = (s) => [...s].reduce((a, ch) => a + (GLYPHS[ch]?.[0] ?? 300) * k, 0);
+        for (const word of fact.split(" ")) {
+          const next = rows.at(-1) ? rows.at(-1) + " " + word : word;
+          if (rows.at(-1) && width(next) > maxW) rows.push(word);
+          else rows[rows.length - 1] = next;
+        }
+        const cw = Math.max(maxW, (width(title) * 26) / size) + 44, ch = 70 + rows.length * 26;
+        const img = sprite(cw, ch, 0, 0, () => {
+          fill(rect(6, 6, cw - 12, ch - 12), C.cream, 6, 0);
+          outline(rect(6, 6, cw - 12, ch - 12), C.white, 1.4);
+          letters(title, 22, 44, 26, C.red, 1.9);
+          rows.forEach((row, j) => letters(row, 22, 78 + j * 26, size, C.dark, 1.3));
+        });
+        return { s, i, img, x: x + w / 2 - cw / 2, y: Math.max(70, y - ch - 6), born: clock };
+      }
+      const cardCache = new Map();
+      let ringImg = null;
+      function tapAt(q) {
+        if (onBike(q)) {
+          dings.push(clock);
+          const A = ears();
+          A.ctx.resume();
+          SOUND.bell(-0.3, A.ctx.destination); // the bell is always a direct tap, so it rings even with the ambience off
+          return;
+        }
+        const hit = spotAt(q);
+        if (!hit || card?.s === hit.s) return void (card = null);
+        // Painting a card takes a moment, so each one is kept; it opens fully on screen, then rides off with its landmark.
+        if (!cardCache.has(hit.s)) cardCache.set(hit.s, makeCard(hit.i, hit.s));
+        const sx = wrapX(hit.i * W - cam, L), c = cardCache.get(hit.s), cw = c.img.width / DPR;
+        card = { ...c, x: Math.max(10, Math.min(W - cw - 10, sx + c.x)) - sx, born: clock };
+      }
+      function hover(e) {
+        const q = toScene(e);
+        view.style.cursor = onBike(q) || spotAt(q) ? "pointer" : "grab";
+      }
+      view.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const px = (e.deltaY + e.deltaX) * (e.deltaMode ? 16 : 1);
+        v = Math.max(-600, Math.min(1000, v + px * 2.5));
+      }, { passive: false });
+      view.addEventListener("pointerdown", (e) => {
+        drag = { x: e.clientX, moved: 0 };
+        view.setPointerCapture(e.pointerId);
+        view.style.cursor = "grabbing";
+      });
+      view.addEventListener("pointermove", (e) => {
+        if (!drag) return hover(e);
+        const dx = e.clientX - drag.x;
+        drag.x = e.clientX;
+        drag.moved += Math.abs(dx);
+        dragDx += (dx * W) / view.getBoundingClientRect().width;
+      });
+      view.addEventListener("pointerup", (e) => {
+        const tap = drag && drag.moved < 6;
+        drag = null;
+        if (tap) tapAt(toScene(e));
+        hover(e);
+      });
+      view.addEventListener("pointercancel", () => (drag = null));
+      addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") held[e.key] = true;
+        else if (e.key === " " && !e.target.closest?.("button")) cruise = cruise ? 0 : SPEED;
+        else if (e.key === "Escape") card = null;
+        else return;
+        e.preventDefault();
+      });
+      addEventListener("keyup", (e) => delete held[e.key]);
+      addEventListener("blur", () => Object.keys(held).forEach((k) => delete held[k]));
+
+      // ---- sound: all synthesised in Web Audio. The ambience stays off until the button turns it on. ----
+      let audio = null;
+      function ears() {
+        if (audio) return audio;
+        const ctx = new AudioContext(), master = new GainNode(ctx, { gain: 0 }), bed = new GainNode(ctx, { gain: 0 });
+        const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 400 });
+        // Brown noise (wind, far-off traffic, surf), with its drift removed so the loop has no seam.
+        const n = ctx.sampleRate * 4, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0, b = 0; i < n; i++) d[i] = b = (b + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+        const drift = d[n - 1] - d[0];
+        for (let i = 0; i < n; i++) d[i] = (d[i] - (drift * i) / n) * 3.5;
+        const src = new AudioBufferSourceNode(ctx, { buffer: buf, loop: true });
+        src.connect(lp).connect(bed).connect(master).connect(ctx.destination);
+        src.start();
+        return (audio = { ctx, master, bed, lp, on: false });
+      }
+      function voice({ type = "sine", f, sweep = [], gain, a = 0.005, hold = 0, d = 0.4, at = 0, pan = 0, band, out }) {
+        const { ctx } = audio, t = ctx.currentTime + at, end = t + a + hold + d;
+        const o = new OscillatorNode(ctx, { type, frequency: f }), g = new GainNode(ctx, { gain: 0.0001 });
+        for (const [dt, to] of sweep) o.frequency.exponentialRampToValueAtTime(to, t + dt);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + a);
+        g.gain.setValueAtTime(gain, t + a + hold);
+        g.gain.exponentialRampToValueAtTime(0.0001, end);
+        (band ? o.connect(new BiquadFilterNode(ctx, band)) : o).connect(g).connect(new StereoPannerNode(ctx, { pan })).connect(out || audio.master);
+        o.start(t);
+        o.stop(end + 0.05);
+      }
+      const repeat = (min, extra, gap, jitter, f) => {
+        for (let k = 0, at = 0, n = min + Math.floor(Math.random() * extra); k < n; k++, at += gap + Math.random() * jitter) f(at);
+      };
+      const SOUND = {
+        // A thumb-flicked handlebar bell: two bright, inharmonic rings.
+        bell: (pan, out) => repeat(2, 1, 0.15, 0, (at) => [[1, 0.05], [1.51, 0.025], [2.76, 0.015]].forEach(([m, gain]) => voice({ f: 2100 * m, gain, d: 0.9, at, pan, out }))),
+        // The gripman's clang-clang-clang... clang.
+        clang: (pan, out) => [0, 0.2, 0.4, 0.85].forEach((at) => [[1, 0.05], [2.32, 0.03], [3.9, 0.02], [5.1, 0.01]].forEach(([m, gain]) => voice({ f: 640 * m, gain, d: 1.1, at, pan, out }))),
+        // The Golden Gate's two-tone foghorn: a long, low "beee-ohhh".
+        foghorn: (pan, out) => [[0, 104], [2.1, 86]].forEach(([at, f]) => [1, 1.006].forEach((m) => voice({ type: "sawtooth", f: f * m, gain: 0.06, a: 0.3, hold: 1.3, d: 0.6, at, pan, out, band: { type: "lowpass", frequency: 420, Q: 3 } }))),
+        gull: (pan, out) => repeat(2, 2, 0.32, 0.15, (at) => voice({ type: "triangle", f: 1500, sweep: [[0.06, 2300], [0.28, 1150]], gain: 0.025, a: 0.03, hold: 0.1, d: 0.18, at, pan, out, band: { type: "bandpass", frequency: 1900, Q: 2 } })),
+        seaLion: (pan, out) => repeat(2, 3, 0.22, 0.12, (at) => voice({ type: "sawtooth", f: 260, sweep: [[0.14, 170]], gain: 0.09, a: 0.01, hold: 0.05, d: 0.1, at, pan, out, band: { type: "bandpass", frequency: 700, Q: 2.5 } })),
+      };
+      // Each source sits somewhere in the world and gets louder and pans as the ride passes it.
+      const SHORE = ["Embarcadero", "Fisherman's Wharf", "Golden Gate", "Ocean Beach"];
+      const at = (title, x) => () => regionAt(title) * W + x;
+      const SOURCES = [
+        { x: at("Golden Gate", 710), every: 10, play: SOUND.foghorn },
+        { x: at("Fisherman's Wharf", 350), every: 2.5, play: SOUND.seaLion },
+        ...SHORE.map((title) => ({ x: at(title, 700), every: 4.5, play: SOUND.gull })),
+        { x: (t) => cableCar.pos(t).x + 100, every: 5, play: SOUND.clang },
+      ];
+      function listen(t) {
+        if (!audio?.on) return;
+        const now = audio.ctx.currentTime, shore = SHORE.includes(regions[mod(Math.floor((cam + W / 2) / W), NR)].title);
+        audio.bed.gain.setTargetAtTime(shore ? 0.06 + 0.035 * Math.sin(t * 0.9) : 0.03, now, 0.8);
+        audio.lp.frequency.setTargetAtTime(shore ? 700 : 380, now, 1);
+        for (const s of SOURCES) {
+          const sx = wrapX(s.x(t) - cam, L), dist = Math.abs(sx - W / 2);
+          s.next ??= t + Math.random() * s.every;
+          if (dist > 1300 || t < s.next) continue;
+          s.next = t + s.every * (0.7 + Math.random() * 0.6);
+          const out = new GainNode(audio.ctx, { gain: 1 - dist / 1300 });
+          out.connect(audio.master);
+          s.play(Math.max(-0.9, Math.min(0.9, (sx - W / 2) / (W / 2))), out);
+        }
+      }
+      const soundButton = document.getElementById("sound");
+      soundButton.addEventListener("click", () => {
+        const A = ears();
+        A.ctx.resume();
+        A.on = !A.on;
+        A.master.gain.setTargetAtTime(A.on ? 1 : 0, A.ctx.currentTime, 0.15);
+        soundButton.textContent = A.on ? "sound on" : "sound off";
+        soundButton.setAttribute("aria-pressed", A.on);
+      });
+      document.addEventListener("visibilitychange", () => audio && (document.hidden ? audio.ctx.suspend() : audio.ctx.resume()));
+
+      function drawAt(img, x, y) {
+        if (x > W * DPR || x + img.width < 0) return;
+        vctx.drawImage(img, x, y);
+      }
+
+      function frame(now) {
+        t0 ??= now;
+        const t = (now - t0) / 1000, dt = last == null ? 0 : Math.min(0.1, (now - last) / 1000);
+        last = now;
+        clock = t;
+        // A drag carries the world with the pointer; otherwise ease back towards cruising (or the held arrow).
+        if (drag?.moved >= 6) {
+          if (dt) v = 0.5 * v - (0.5 * dragDx) / dt;
+        } else v += ((held.ArrowRight ? 760 : held.ArrowLeft ? -320 : cruise) - v) * Math.min(1, dt * 1.8);
+        dragDx = 0;
+        // Never outrun the paint: ease off when the slice being ridden into isn't painted yet.
+        const c0 = Math.floor(cam / W);
+        if (!tiles.has(mod(c0 + 2, NR))) v = Math.min(v, SPEED);
+        if (!tiles.has(mod(c0 - 1, NR)) && cam - c0 * W < W / 3) v = Math.max(v, 0);
+        cam += v * dt;
+        pedal += (v * dt) / SPEED;
+        // Keep the tiles around the camera painted (a few ms of brushwork per frame), drop the rest.
+        const ct = Math.floor(cam / W);
+        // Lay out the neighbourhoods ahead (and just behind) of time, one per frame at most.
+        const ahead = [ct + 3, ct + 4, ct - 2].map((w) => mod(w, NR)).find((i) => !regions[i].strokes);
+        if (ahead != null) ensure(ahead);
+        else if (!job) {
+          for (const want of [ct, ct + 1, ct + 2, ct - 1]) {
+            const k = mod(want, NR);
+            if (!tiles.has(k)) {
+              job = { k, ...renderTile(null, k, near) };
+              break;
+            }
+          }
+        }
+        if (job && advance(job, params.has("capture") ? Infinity : 7)) {
+          tiles.set(job.k, job.c);
+          job = null;
+        }
+        for (const k of tiles.keys()) if (![ct - 1, ct, ct + 1, ct + 2].some((w) => mod(w, NR) === k)) tiles.delete(k);
+
+        vctx.clearRect(0, 0, view.width, view.height);
+        drawAt(frameOf(moon, 0), 1200 * DPR, 96 * DPR);
+        const fcam = cam * PARALLAX;
+        for (const [k, c] of farTiles) {
+          const sx = wrapX(k * W - fcam, F);
+          if (sx < W && sx > -W) vctx.drawImage(c, sx * DPR, 0);
+        }
+        const tw = Math.floor(t * 4);
+        for (let j = 0; j < 6; j++) {
+          const [x, y] = far.stars[Math.floor(hash(tw * 3 + j) * far.stars.length)];
+          const sx = wrapX(x - fcam, F);
+          if (sx > -10 && sx < W) drawAt(frameOf(sparkle, j % 2), (sx - 7) * DPR, (y - 7) * DPR);
+        }
+        for (let d = -1; d <= 1; d++) {
+          const k = mod(ct + d, NR), c = tiles.get(k), sx = wrapX(k * W - cam, L);
+          if (!c || sx >= W || sx <= -W) continue;
+          vctx.drawImage(c, sx * DPR, 0);
+        }
+        for (let d = -1; d <= 2; d++) {
+          const Z = regions[mod(ct + d, NR)];
+          if (!tiles.has(mod(ct + d, NR)) || !Z.strokes) continue;
+          const sx = wrapX(Z.x0 - cam, L);
+          if (sx >= W + 200 || sx <= -W - 200) continue;
+          const slot = Math.floor(t / 2.5);
+          for (let j = 0; j < 2; j++) {
+            if (!Z.windows.length || hash(slot * 7 + j + Z.x0) < 0.4) continue;
+            const wi = Math.floor(hash(slot * 13 + j + Z.x0) * Z.windows.length), [x, y, w, h] = Z.windows[wi];
+            Z.dark[wi] ||= sprite(w, h, x, y, () => fill(rect(x + 2, y + 2, w - 4, h - 4), C.dark, Math.min(4, w / 4)));
+            drawAt(Z.dark[wi], wrapX(x - cam, L) * DPR, y * DPR);
+          }
+          for (const a of Z.actors) {
+            const q = a.pos(t);
+            drawAt(frameOf(a, t), (sx + q.x) * DPR, q.y * DPR);
+          }
+        }
+        for (const a of [...world.actors].reverse()) {
+          const q = a.pos(t);
+          drawAt(frameOf(a, a === bike ? pedal : t), wrapX(q.x - cam, L) * DPR, q.y * DPR);
+        }
+        if (card && t - card.born > 12) card = null;
+        if (card) {
+          vctx.globalAlpha = Math.min(1, (t - card.born) / 0.2, (12 - (t - card.born)) / 0.5);
+          drawAt(card.img, wrapX(card.i * W + card.x - cam, L) * DPR, card.y * DPR);
+        }
+        ringImg ||= sprite(170, 46, 0, 0, () => {
+          letters("ring ring", 8, 32, 26, C.dark, 4);
+          letters("ring ring", 8, 32, 26, C.yellow, 1.8);
+        });
+        for (const born of dings.filter((b) => t - b < 1)) {
+          vctx.globalAlpha = 1 - (t - born);
+          drawAt(ringImg, (BIKE_X + 50) * DPR, (450 - (t - born) * 40) * DPR);
+        }
+        vctx.globalAlpha = 1;
+        while (dings.length && t - dings[0] >= 1) dings.shift();
+        listen(t);
+        requestAnimationFrame(frame);
+      }
+    </script>
+  </body>
+</html>

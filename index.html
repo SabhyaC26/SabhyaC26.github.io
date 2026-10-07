@@ -59,6 +59,20 @@
         max-width: 26rem;
         cursor: pointer;
       }
+      header {
+        position: relative;
+      }
+      #rider {
+        position: absolute;
+        pointer-events: none;
+      }
+      #ride {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50px;
+        height: 46px;
+      }
       .ul {
         position: absolute;
         z-index: -1;
@@ -120,7 +134,11 @@
     </style>
   </head>
   <body>
-    <h1><span class="sr-only">Sabhya Chhabria</span><canvas id="name" aria-hidden="true"></canvas></h1>
+    <header>
+      <h1><span class="sr-only">Sabhya Chhabria</span><canvas id="name" aria-hidden="true"></canvas></h1>
+      <canvas id="rider" aria-hidden="true"></canvas>
+      <a id="ride" href="/sf/" title="ride through San Francisco"><span class="sr-only">A posca bike ride through San Francisco</span></a>
+    </header>
     <nav>
       <a href="https://github.com/SabhyaC26">Github</a>
       <a href="https://x.com/sabhyac267">Twitter</a>
@@ -330,7 +348,8 @@
           if (si < plan.length) canvas.raf = requestAnimationFrame(tick);
         };
         cancelAnimationFrame(canvas.raf);
-        canvas.raf = requestAnimationFrame(tick);
+        if (ms) canvas.raf = requestAnimationFrame(tick);
+        else tick(0);
       }
 
       function writeName(animate) {
@@ -375,9 +394,149 @@
         canvas.style.height = canvas.height / DPR + "px";
         canvas.style.marginLeft = (-(pad - R * 1.15) * k) / DPR + "px"; // line the ink, not the canvas, up with the text
         const strokes = raw.map((pts) => pts.map((q) => ({ x: (q.x - minX) * k, y: (q.y - minY) * k })));
+        canvas.ink = { strokes, r: R * k, base: (-minY * k) / DPR }; // the terrain the little bike rides over
         const ms = animate && !REDUCED ? 2600 : 0;
         play(canvas, strokes, "#ff7a1c", R * k, ms, (i) => (!ms ? 0 : i === 0 ? 300 : gaps[i] ? 220 : 45));
       }
+
+      // A little posca cyclist rides over the name as if the letters were SF hills: it climbs the tall ones,
+      // catches air off their tops, lands in a puff of dust, and turns around at each end. Click it to go for
+      // the full ride through SF.
+      const ride = document.getElementById("ride"), rider = document.getElementById("rider");
+      const S = 0.34, BW = 50, BH = 50, UP = 60, SIDE = 30, CRUISE = 62, G = 900;
+      const WB = 80 * S, AX = 70 * S, AY = 115 * S - 3; // wheelbase, and the point between the wheel centres
+      const along = (vs) => {
+        const pts = [];
+        for (let i = 0; i < vs.length - 1; i++) {
+          const [x0, y0] = vs[i], [x1, y1] = vs[i + 1], n = Math.max(1, Math.ceil((Math.hypot(x1 - x0, y1 - y0) * DPR) / 0.6));
+          for (let j = i ? 1 : 0; j <= n; j++) pts.push({ x: (x0 + ((x1 - x0) * j) / n) * DPR, y: (y0 + ((y1 - y0) * j) / n) * DPR });
+        }
+        return pts;
+      };
+      const loop = (cx, cy, r) => Array.from({ length: 49 }, (_, i) => [cx + r * Math.cos((i / 48) * 6.3), cy + r * Math.sin((i / 48) * 6.3)]);
+      // Paint several colours of posca into one canvas, one layer per colour: [[colour, tip radius, polylines], ...].
+      function paintParts(w, h, parts) {
+        const c = layer(Math.ceil(w * DPR), Math.ceil(h * DPR)), g = c.getContext("2d");
+        for (const [color, r, lines] of parts) {
+          const part = layer(c.width, c.height);
+          play(part, lines.map(along), color, r * DPR, 0, () => 0);
+          g.drawImage(part, 0, 0);
+        }
+        return c;
+      }
+      let bikeFrames = [], puffs = [];
+      function paintBike() {
+        const fg = getComputedStyle(document.body).color, muted = getComputedStyle(document.querySelector("nav a")).color;
+        // The SF ride's cyclist, scaled down.
+        const P = ([x, y]) => [x * S, y * S - 3];
+        bikeFrames = Array.from({ length: 8 }, (_, k) => {
+          const th = (k / 8) * 6.283, r0 = [30, 115], f0 = [110, 115], bb = [63, 115], seat = [57, 81], bar = [100, 77], joint = [97, 83];
+          const knee = (hip, foot) => {
+            const dx = foot[0] - hip[0], dy = foot[1] - hip[1], d = Math.min(41.9, Math.hypot(dx, dy));
+            const a = Math.atan2(dy, dx), b = Math.acos(Math.min(1, d / 42));
+            return [hip[0] + Math.cos(a - b) * 21, hip[1] + Math.sin(a - b) * 21];
+          };
+          const pedal = (a) => [bb[0] + Math.cos(a) * 9, bb[1] + Math.sin(a) * 9];
+          const spokes = [r0, f0].flatMap(([cx, cy]) => [0, 1].map((j) => {
+            const a = th * 0.5 + (j * Math.PI) / 2;
+            return [[cx + Math.cos(a) * 20, cy + Math.sin(a) * 20], [cx - Math.cos(a) * 20, cy - Math.sin(a) * 20]];
+          }));
+          const back = pedal(th + Math.PI), front = pedal(th);
+          return paintParts(BW, BH, [
+            [muted, 0.5, spokes],
+            [muted, 1.5, [[seat, knee(seat, back), back]]],
+            [fg, 1.25, [loop(...r0, 22), loop(...f0, 22)]],
+            ["#4fc3f7", 1.35, [[r0, bb, seat, r0], [bb, joint, seat], [joint, f0], [joint, bar, [108, 75]]]],
+            [fg, 1.55, [[seat, [87, 43]], [[87, 43], [97, 59], bar], [seat, knee(seat, front), front], loop(93, 31, 7)]],
+            ["#ff7a1c", 2, [[[85, 25], [92, 19], [100, 19], [103, 25]]]],
+          ].map(([c, r, lines]) => [c, r, lines.map((vs) => vs.map(P))]));
+        });
+        puffs = [1.1, 1.6, 2.1].map((r) => paintParts(8, 8, [[muted, r, [[[4, 4], [4.3, 4.2]]]]]));
+      }
+
+      // The ride line: where the wheel centres sit above the ink, one value per CSS px of the name canvas.
+      // A big circle rolled over the letters' top edge, so the wheels bridge narrow gaps and round off corners.
+      let path = [], lo = 0, hi = 0;
+      function survey() {
+        const name = document.getElementById("name"), { strokes, r, base } = name.ink, rr = r / DPR;
+        const w = Math.ceil(name.width / DPR), top = new Float32Array(w).fill(Infinity);
+        for (const st of strokes)
+          for (const q of st) {
+            const x = q.x / DPR, y = q.y / DPR;
+            for (let xi = Math.max(0, Math.ceil(x - rr)); xi <= Math.min(w - 1, x + rr); xi++) top[xi] = Math.min(top[xi], y - Math.sqrt(rr * rr - (xi - x) ** 2));
+          }
+        const inked = [...top.keys()].filter((i) => top[i] < Infinity);
+        [lo, hi] = [inked[0] + WB / 2 + 2, inked.at(-1) - WB / 2 - 2];
+        const ground = top.map((y) => Math.min(y, base)), PR = 12, RW = 22 * S;
+        path = Array.from(ground, (_, x) => {
+          let best = Infinity;
+          for (let d = -PR; d <= PR; d++) if (ground[x + d] != null) best = Math.min(best, ground[x + d] - Math.sqrt(PR * PR - d * d));
+          return best + PR - RW;
+        });
+        rider.style.cssText = `left:${name.offsetLeft - SIDE}px;top:${name.offsetTop - UP}px;width:${w + 2 * SIDE}px;height:${name.offsetHeight + UP}px`;
+        rider.width = (w + 2 * SIDE) * DPR;
+        rider.height = (name.offsetHeight + UP) * DPR;
+      }
+      const at = (x) => path[Math.max(0, Math.min(path.length - 1, Math.round(x)))];
+      const bike = { x: 0, y: 0, vy: 0, air: true, dir: 1, wait: 0, dist: 0, tilt: 0, hold: false, last: null, dust: [] };
+      function pedalOn(now) {
+        const dt = bike.last == null ? 0 : Math.min(0.04, (now - bike.last) / 1000);
+        bike.last = now;
+        if (bike.wait > 0) bike.wait -= dt;
+        else if (!bike.hold && dt) {
+          // Slower up the hills, quicker down them; ease into each end, then turn around.
+          const slope = (at(bike.x + bike.dir * 3) - at(bike.x - bike.dir * 3)) / 6;
+          const ahead = bike.dir > 0 ? hi - bike.x : bike.x - lo;
+          const step = Math.max(0, Math.min(ahead, CRUISE * Math.max(0.45, Math.min(1.7, 1 + slope * 1.2)) * Math.min(1, 0.25 + ahead / 30) * dt));
+          bike.x += bike.dir * step;
+          if (!bike.air) bike.dist += step;
+          if (ahead - step < 0.5) (bike.dir = -bike.dir), (bike.wait = 1.1);
+        }
+        // Gravity: stay on the ground unless it falls away faster than the bike would fall; then fly.
+        const ground = at(bike.x);
+        if (dt && (bike.air || ground > bike.y + (bike.vy + G * dt) * dt)) {
+          bike.vy += G * dt;
+          bike.y += bike.vy * dt;
+          if (bike.air && bike.y >= ground) {
+            for (const s of [-1, 0, 1]) bike.dust.push({ x: bike.x + s * 10, y: ground + 6, vx: s * 18, age: 0, img: puffs[s + 1] });
+          }
+          bike.air = bike.y < ground;
+          if (!bike.air) (bike.y = ground), (bike.vy = 0);
+        } else if (dt) {
+          bike.vy = Math.max(-170, (ground - bike.y) / dt); // a steep climb launches it off the top
+          bike.y = ground;
+        }
+        const lean = bike.air ? Math.atan2(bike.vy, CRUISE * bike.dir) * 0.4 * bike.dir : Math.atan2(at(bike.x + bike.dir * WB / 2) - at(bike.x - bike.dir * WB / 2), WB);
+        bike.tilt += (Math.max(-0.55, Math.min(0.55, lean)) - bike.tilt) * Math.min(1, dt * 14);
+
+        const g = rider.getContext("2d"), mx = bike.x + SIDE, my = bike.y + UP;
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.clearRect(0, 0, rider.width, rider.height);
+        for (const p of bike.dust) {
+          p.age += dt;
+          g.globalAlpha = Math.max(0, 0.55 * (1 - p.age / 0.6));
+          g.drawImage(p.img, (p.x + SIDE + p.vx * p.age - 4) * DPR, (p.y + UP - p.age * 12 - 4) * DPR);
+        }
+        g.globalAlpha = 1;
+        bike.dust = bike.dust.filter((p) => p.age < 0.6);
+        g.translate(mx * DPR, my * DPR);
+        g.rotate(bike.tilt * bike.dir);
+        g.scale(bike.dir, 1);
+        g.drawImage(bikeFrames[Math.floor(bike.dist / 4) % 8], -AX * DPR, -AY * DPR);
+        ride.style.transform = `translate(${rider.offsetLeft + mx - BW / 2}px, ${rider.offsetTop + my - 36}px)`;
+        if (!REDUCED) requestAnimationFrame(pedalOn);
+      }
+      function startRide() {
+        paintBike();
+        survey();
+        // Drop in from above onto the S (or, with reduced motion, park on the last letter).
+        if (REDUCED) (bike.x = hi), (bike.y = at(hi)), (bike.air = false), (bike.dir = -1);
+        else (bike.x = lo), (bike.y = at(lo) - 50);
+        if (REDUCED) pedalOn(0);
+        else requestAnimationFrame(pedalOn);
+      }
+      ride.addEventListener("mouseenter", () => (bike.hold = true));
+      ride.addEventListener("mouseleave", () => (bike.hold = false));
 
       function underline(a) {
         const ink = INKS[Math.floor(Math.random() * INKS.length)];
@@ -406,7 +565,7 @@
         a.uls = [];
       }
 
-      for (const a of document.querySelectorAll("a")) {
+      for (const a of document.querySelectorAll("a:not(#ride)")) {
         a.addEventListener("mouseenter", () => underline(a));
         a.addEventListener("focus", () => underline(a));
         a.addEventListener("mouseleave", () => erase(a));
@@ -418,17 +577,30 @@
       themeButton.addEventListener("click", () => {
         localStorage.theme = document.documentElement.dataset.theme = nextTheme();
         showTheme();
+        if (bikeFrames.length) {
+          paintBike();
+          if (REDUCED) pedalOn(0);
+        }
       });
       showTheme();
-      document.getElementById("name").addEventListener("click", () => writeName(true));
+      document.getElementById("name").addEventListener("click", () => {
+        writeName(true);
+        if (bikeFrames.length) survey(); // new letters, new hills
+      });
       let lastWidth = innerWidth;
       addEventListener("resize", () => {
         if (innerWidth === lastWidth) return;
         lastWidth = innerWidth;
         writeName(false);
+        if (bikeFrames.length) {
+          survey();
+          bike.x = Math.max(lo, Math.min(hi, bike.x));
+          if (REDUCED) pedalOn(0);
+        }
         document.querySelectorAll(".ul").forEach((c) => c.remove());
       });
       writeName(true);
+      setTimeout(startRide, REDUCED ? 0 : 2700);
     </script>
   </body>
 </html>
