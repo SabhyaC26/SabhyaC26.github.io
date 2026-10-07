@@ -3,18 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
+    <script>
+      document.documentElement.dataset.theme = localStorage.theme || "dark";
+    </script>
     <title>Sabhya Chhabria</title>
     <meta name="description" content="Sabhya Chhabria's personal website" />
     <style>
       :root {
+        color-scheme: dark;
         --fg: #ece9e2;
         --muted: #8a8780;
+        /* matte black with a faint paper tooth */
+        --paper: #0c0c0c;
+        --tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --fg: #1a1918;
+        --muted: #6f6a62;
+        --paper: #f4f1ea;
+        --tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       }
       html {
-        /* matte black with a faint paper tooth */
-        background: #0c0c0c
-          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background: var(--paper) var(--tooth);
       }
       body {
         margin: 0 auto;
@@ -71,6 +82,7 @@
       li:has(time) {
         display: flex;
         justify-content: space-between;
+        align-items: baseline;
         gap: 1rem;
       }
       li time {
@@ -84,9 +96,26 @@
         gap: 0.4rem 1.25rem;
         margin: 0 0 2.5rem;
       }
-      nav a {
+      nav a,
+      #theme {
         color: var(--muted);
         font-size: 0.8rem;
+      }
+      #theme {
+        display: flex;
+        align-self: center;
+        margin-left: auto;
+        padding: 0;
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      #theme:hover {
+        color: var(--fg);
+      }
+      :root[data-theme="dark"] .moon,
+      :root[data-theme="light"] .sun {
+        display: none;
       }
     </style>
   </head>
@@ -99,6 +128,12 @@
       <a href="https://substack.com/@sabhyachhabria">Substack</a>
       <a href="https://www.strava.com/athletes/105348209">Strava</a>
       <a href="mailto:sabhyachhabria@gmail.com">Email</a>
+      <button id="theme" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <g class="sun"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></g>
+          <path class="moon" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
+        </svg>
+      </button>
     </nav>
     <main>
       <p>
@@ -338,6 +373,7 @@
         canvas.width = Math.round((maxX - minX) * k);
         canvas.height = Math.round((maxY - minY) * k);
         canvas.style.height = canvas.height / DPR + "px";
+        canvas.style.marginLeft = (-(pad - R * 1.15) * k) / DPR + "px"; // line the ink, not the canvas, up with the text
         const strokes = raw.map((pts) => pts.map((q) => ({ x: (q.x - minX) * k, y: (q.y - minY) * k })));
         const ms = animate && !REDUCED ? 2600 : 0;
         play(canvas, strokes, "#ff7a1c", R * k, ms, (i) => (!ms ? 0 : i === 0 ? 300 : gaps[i] ? 220 : 45));
@@ -376,6 +412,14 @@
         a.addEventListener("mouseleave", () => erase(a));
         a.addEventListener("blur", () => erase(a));
       }
+      const themeButton = document.getElementById("theme");
+      const nextTheme = () => (document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+      const showTheme = () => themeButton.setAttribute("aria-label", `Switch to ${nextTheme()} mode`);
+      themeButton.addEventListener("click", () => {
+        localStorage.theme = document.documentElement.dataset.theme = nextTheme();
+        showTheme();
+      });
+      showTheme();
       document.getElementById("name").addEventListener("click", () => writeName(true));
       let lastWidth = innerWidth;
       addEventListener("resize", () => {
