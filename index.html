@@ -3,27 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="dark" />
     <title>Sabhya Chhabria</title>
     <meta name="description" content="Sabhya Chhabria's personal website" />
     <style>
       :root {
-        --fg: #111;
-        --muted: #6b7280;
-        --bg: #fff;
+        --fg: #ece9e2;
+        --muted: #8a8780;
       }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --fg: #f3f4f6;
-          --muted: #9ca3af;
-          --bg: #0b0d10;
-        }
+      html {
+        /* matte black with a faint paper tooth */
+        background: #0c0c0c
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       }
       body {
         margin: 0 auto;
         max-width: 36rem;
         padding: 3rem 2rem;
-        background: var(--bg);
         color: var(--fg);
         font: 400 0.95rem/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
@@ -37,6 +33,26 @@
       }
       a {
         color: inherit;
+        text-decoration: none;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+      #name {
+        display: block;
+        width: 100%;
+        max-width: 26rem;
+        cursor: pointer;
+      }
+      .ul {
+        position: absolute;
+        z-index: -1;
+        pointer-events: none;
+        transition: opacity 0.35s;
       }
       h2 {
         font-size: 0.8rem;
@@ -71,15 +87,11 @@
       nav a {
         color: var(--muted);
         font-size: 0.8rem;
-        text-decoration: none;
-      }
-      nav a:hover {
-        text-decoration: underline;
       }
     </style>
   </head>
   <body>
-    <h1>Sabhya Chhabria</h1>
+    <h1><span class="sr-only">Sabhya Chhabria</span><canvas id="name" aria-hidden="true"></canvas></h1>
     <nav>
       <a href="https://github.com/SabhyaC26">Github</a>
       <a href="https://x.com/sabhyac267">Twitter</a>
@@ -143,5 +155,236 @@
         </ul>
       </section>
     </main>
+    <script>
+      // Posca-style paint marker: the name is written once, links get a marker underline on hover.
+      // Glyphs are single-stroke centrelines from "EMS Elfin" (Inkscape Hershey Text fonts, SIL OFL 1.1).
+      const GLYPHS = {"C":[699,"M 696 142 L 633 69.3 L 545 18.9 L 457 9.45 L 353 22.1 L 246 81.9 L 180 161 L 126 280 L 123 410 L 176 564 L 265 671 L 365 712 L 466 731 L 564 718 L 668 652 L 680 715 L 662 652 L 671 586"],"S":[425,"M 217 123 L 208 170 L 151 195 L 94.5 173 L 72.5 107 L 88.2 50.4 L 132 -9.45 L 205 -37.8 L 296 3.15 L 362 81.9 L 381 151 L 375 214 L 312 337 L 208 498 L 173 580 L 173 665 L 217 731 L 246 753 L 293 759 L 337 737 L 400 677 L 425 718 L 365 602"],"a":[387,"M 126 350 L 110 413 L 139 460 L 202 501 L 284 482 L 328 413 L 340 328 L 343 198 L 328 148 L 265 104 L 198 69.3 L 139 59.9 L 91.4 88.2 L 88.2 158 L 113 202 L 183 220 L 271 220 L 296 214 L 334 173 L 346 132 L 350 69.3 L 350 0 L 353 -25.2 L 387 -31.5 L 406 -31.5 L 428 -31.5 L 454 -18.9"],"b":[472,"M 44.1 810 L 195 822 L 123 813 L 158 -9.45 L 249 -37.8 L 343 -18.9 L 422 56.7 L 450 132 L 441 214 L 410 274 L 353 312 L 261 293 L 208 249 L 173 195 L 151 139 L 164 -37.8 L 117 -50.4 L 94.5 -63"],"h":[447,"M 88.2 -53.5 L 230 -12.6 L 161 -34.6 L 135 491 L 123 828 L 145 835 L 123 822 L 63 822 M 145 315 L 202 387 L 280 425 L 334 413 L 369 365 L 387 271 L 394 189 L 397 -18.9 L 337 -34.6 L 466 -6.3"],"i":[258,"M 78.8 50.4 L 81.9 50.4 L 243 69.3 L 167 63 L 180 435 L 110 435 M 132 696 L 132 658 L 173 652 L 173 696 L 132 696"],"r":[413,"M 123 -25.2 L 195 -3.15 L 252 12.6 L 176 -9.45 L 158 176 L 158 340 L 145 491 L 78.8 479 L 145 488 L 170 321 L 224 422 L 309 491 L 369 507 L 400 479 L 419 444 L 410 400 L 391 381 L 362 381"],"y":[457,"M 56.7 -198 L 28.4 -164 L -28.4 -164 L -63 -214 L -72.4 -280 L -25.2 -337 L 53.5 -337 L 158 -287 L 249 -129 L 337 85.1 L 391 265 L 450 400 M 318 47.2 L 117 381 L 151 387 L 53.5 372"]};
+      const DPR = Math.min(devicePixelRatio || 1, 2);
+      const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const COVER = 0.9; // one pass of paint lets a little black through; crossings read brighter
+      const INKS = ["#ffd21f", "#ff6aa2", "#ff7a1c", "#4fc3f7", "#7ee07a", "#b39dff"];
+
+      function noise() {
+        const v = Array.from({ length: 256 }, Math.random);
+        return (t) => {
+          const i = Math.floor(t), f = t - i, u = f * f * (3 - 2 * f);
+          return v[i & 255] * (1 - u) + v[(i + 1) & 255] * u;
+        };
+      }
+
+      function layer(w, h) {
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        return c;
+      }
+
+      // Paper tooth: sparse specks the paint skips over. Shared, so it stays put across strokes.
+      const grain = (() => {
+        const c = layer(128, 128), g = c.getContext("2d"), img = g.createImageData(128, 128);
+        for (let i = 3; i < img.data.length; i += 4) img.data[i] = Math.random() < 0.025 ? 30 + Math.random() * 80 : 0;
+        g.putImageData(img, 0, 0);
+        return c;
+      })();
+
+      // One marker stroke: a union of round tip stamps (paint never darkens over itself within a stroke)
+      // minus lengthwise streaks where the fibre tip skips, worse when the hand moves fast.
+      function Brush(w, h, color, r) {
+        const paint = layer(w, h), streak = layer(w, h), out = layer(w, h);
+        const p = paint.getContext("2d"), s = streak.getContext("2d"), o = out.getContext("2d");
+        let fibres, wob, dist;
+        return {
+          canvas: out,
+          reset() {
+            p.clearRect(0, 0, w, h);
+            s.clearRect(0, 0, w, h);
+            p.fillStyle = color;
+            fibres = Array.from({ length: 11 }, () => ({ off: (Math.random() * 2 - 1) * 0.9, n: noise() }));
+            wob = noise();
+            dist = 0;
+          },
+          stamp(x, y, nx, ny, step, speed) {
+            dist += step;
+            const fresh = Math.exp(-dist / (r * 1.4)); // tip pressed down: a slightly fatter, wetter start
+            const rad = r * (1 + 0.16 * fresh + 0.07 * (wob(dist / (r * 2)) - 0.5)) + (Math.random() - 0.5) * 0.08 * r;
+            p.beginPath();
+            p.arc(x, y, rad, 0, 7);
+            p.fill();
+            const dry = (0.25 + 0.75 * speed) * (1 - fresh);
+            const dot = Math.max(0.55 * DPR, r * 0.06);
+            for (const f of fibres) {
+              const k = Math.max(0, f.n(dist / (r * 2.5)) - 0.62) * dry;
+              if (!k) continue;
+              s.fillStyle = `rgb(0 0 0 / ${Math.min(1, (k * 0.4 * step) / dot)})`;
+              s.beginPath();
+              s.arc(x + nx * f.off * rad, y + ny * f.off * rad, dot, 0, 7);
+              s.fill();
+            }
+          },
+          render() {
+            o.globalCompositeOperation = "copy";
+            o.drawImage(paint, 0, 0);
+            o.globalCompositeOperation = "destination-out";
+            o.drawImage(streak, 0, 0);
+            return out;
+          },
+        };
+      }
+
+      // Turn polylines (device px) into stamps with normals, a per-stamp time cost (slower round curves),
+      // and a pen-lift pause before each stroke; then play them back onto the canvas.
+      function play(canvas, strokes, color, r, ms, lift) {
+        const ctx = canvas.getContext("2d");
+        const { width: w, height: h } = canvas;
+        const base = layer(w, h), b = base.getContext("2d");
+        const brush = Brush(w, h, color, r);
+        const tooth = ctx.createPattern(grain, "repeat");
+        let total = 0;
+        const plan = strokes.map((pts) =>
+          pts.map((q, i) => {
+            const a = pts[Math.max(0, i - 1)], c = pts[Math.min(pts.length - 1, i + 1)];
+            const dx = c.x - a.x, dy = c.y - a.y, len = Math.hypot(dx, dy) || 1;
+            const a2 = pts[Math.max(0, i - 6)], c2 = pts[Math.min(pts.length - 1, i + 6)];
+            const t1 = Math.atan2(q.y - a2.y, q.x - a2.x), t2 = Math.atan2(c2.y - q.y, c2.x - q.x);
+            const bend = Math.abs(Math.atan2(Math.sin(t2 - t1), Math.cos(t2 - t1)));
+            const speed = 1 / (1 + 2.5 * bend);
+            const step = i ? Math.hypot(q.x - pts[i - 1].x, q.y - pts[i - 1].y) : 0;
+            total += step / speed;
+            return { x: q.x, y: q.y, nx: -dy / len, ny: dx / len, step, speed, cost: step / speed };
+          })
+        );
+        const scale = ms / (total || 1);
+        let si = 0, pi = 0, budget = 0, last = null, lifted = false;
+        const draw = () => {
+          ctx.globalCompositeOperation = "copy";
+          ctx.drawImage(base, 0, 0);
+          ctx.globalCompositeOperation = "source-over";
+          if (pi) {
+            ctx.globalAlpha = COVER;
+            ctx.drawImage(brush.render(), 0, 0);
+            ctx.globalAlpha = 1;
+          }
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.fillStyle = tooth;
+          ctx.fillRect(0, 0, w, h);
+        };
+        const tick = (now) => {
+          budget += last == null ? 16 : now - last;
+          last = now;
+          if (!ms) budget = Infinity;
+          while (si < plan.length && budget > 0) {
+            const st = plan[si];
+            if (!lifted) {
+              brush.reset();
+              budget -= lift(si);
+              lifted = true;
+              continue;
+            }
+            const q = st[pi++];
+            brush.stamp(q.x, q.y, q.nx, q.ny, q.step, q.speed);
+            budget -= q.cost * scale;
+            if (pi === st.length) {
+              b.globalAlpha = COVER;
+              b.drawImage(brush.render(), 0, 0);
+              si++;
+              pi = 0;
+              lifted = false;
+            }
+          }
+          draw();
+          if (si < plan.length) canvas.raf = requestAnimationFrame(tick);
+        };
+        cancelAnimationFrame(canvas.raf);
+        canvas.raf = requestAnimationFrame(tick);
+      }
+
+      function writeName(animate) {
+        const canvas = document.getElementById("name");
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const path = document.createElementNS(svg.namespaceURI, "path");
+        svg.style.position = "absolute";
+        svg.append(path);
+        document.body.append(svg);
+        // Sample every subpath (one pen stroke each) in font units, y flipped. Each letter gets a
+        // little random hop and tilt so the lettering bounces like a cartoon title.
+        let x = 0;
+        const raw = [], gaps = [];
+        for (const ch of "Sabhya Chhabria") {
+          if (ch === " ") {
+            x += 300;
+            gaps[raw.length] = true;
+            continue;
+          }
+          const [adv, d] = GLYPHS[ch];
+          const hop = (Math.random() - 0.5) * 70, tilt = (Math.random() - 0.5) * 0.14;
+          const cx = adv / 2, cy = -250, cos = Math.cos(tilt), sin = Math.sin(tilt);
+          for (const sub of d.split(/(?=M)/)) {
+            path.setAttribute("d", sub);
+            const len = path.getTotalLength(), pts = [];
+            for (let l = 0; l <= len; l += 1.5) {
+              const q = path.getPointAtLength(l);
+              const dx = q.x - cx, dy = -q.y - cy;
+              pts.push({ x: x + cx + dx * cos - dy * sin, y: cy + hop + dx * sin + dy * cos });
+            }
+            raw.push(pts);
+          }
+          x += adv;
+        }
+        svg.remove();
+        const all = raw.flat(), R = 30, pad = R * 2; // tip radius in font units
+        const minX = Math.min(...all.map((q) => q.x)) - pad, maxX = Math.max(...all.map((q) => q.x)) + pad;
+        const minY = Math.min(...all.map((q) => q.y)) - pad, maxY = Math.max(...all.map((q) => q.y)) + pad;
+        const k = (canvas.clientWidth * DPR) / (maxX - minX);
+        canvas.width = Math.round((maxX - minX) * k);
+        canvas.height = Math.round((maxY - minY) * k);
+        canvas.style.height = canvas.height / DPR + "px";
+        const strokes = raw.map((pts) => pts.map((q) => ({ x: (q.x - minX) * k, y: (q.y - minY) * k })));
+        const ms = animate && !REDUCED ? 2600 : 0;
+        play(canvas, strokes, "#ff7a1c", R * k, ms, (i) => (!ms ? 0 : i === 0 ? 300 : gaps[i] ? 220 : 45));
+      }
+
+      function underline(a) {
+        const ink = INKS[Math.floor(Math.random() * INKS.length)];
+        for (const rc of a.getClientRects()) {
+          const pad = 8, h = 16, w = rc.width + pad * 2, r = 2.3 * DPR;
+          const c = layer(Math.round(w * DPR), h * DPR);
+          c.className = "ul";
+          c.style.cssText = `left:${rc.left + scrollX - pad}px;top:${rc.bottom + scrollY - h / 2 + 2}px;width:${w}px;height:${h}px`;
+          document.body.append(c);
+          a.uls = [...(a.uls || []), c];
+          // A quick hand-pulled line: slight tilt, a gentle sag, a little flick up at the end.
+          const tilt = (Math.random() - 0.5) * 3, sag = 0.8 + Math.random(), pts = [];
+          for (let u = 0; u <= 1; u += 0.5 / (w * DPR)) {
+            const y = h / 2 + tilt * (u - 0.5) + sag * Math.sin(u * Math.PI) - 2.5 * Math.max(0, u - 0.92) / 0.08;
+            pts.push({ x: (pad - 3 + u * (rc.width + 6)) * DPR, y: y * DPR });
+          }
+          play(c, [pts], ink, r, REDUCED ? 0 : 160 + w * 0.7, () => 0);
+        }
+      }
+
+      function erase(a) {
+        for (const c of a.uls || []) {
+          c.style.opacity = 0;
+          c.addEventListener("transitionend", () => c.remove());
+        }
+        a.uls = [];
+      }
+
+      for (const a of document.querySelectorAll("a")) {
+        a.addEventListener("mouseenter", () => underline(a));
+        a.addEventListener("focus", () => underline(a));
+        a.addEventListener("mouseleave", () => erase(a));
+        a.addEventListener("blur", () => erase(a));
+      }
+      document.getElementById("name").addEventListener("click", () => writeName(true));
+      let lastWidth = innerWidth;
+      addEventListener("resize", () => {
+        if (innerWidth === lastWidth) return;
+        lastWidth = innerWidth;
+        writeName(false);
+        document.querySelectorAll(".ul").forEach((c) => c.remove());
+      });
+      writeName(true);
+    </script>
   </body>
 </html>
